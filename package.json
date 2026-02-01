@@ -27,5 +27,8 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
   }
 }

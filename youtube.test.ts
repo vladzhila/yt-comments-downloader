@@ -2,6 +2,9 @@ import { test, expect, describe } from 'bun:test'
 import {
   extractVideoId,
   commentsToCSV,
+  commentsToJSON,
+  commentsToMarkdown,
+  commentsToXlsx,
   downloadComments,
   parseVoteCount,
   decodeHtmlEntities,
@@ -12,6 +15,7 @@ import {
   CANCELLED_ERROR_MESSAGE,
 } from './youtube.ts'
 import type { Comment, Mutation } from './youtube.ts'
+import * as XLSX from 'xlsx'
 
 const API_KEY = 'test-api-key'
 const VIDEO_OK = 'vid12345678'
@@ -212,6 +216,81 @@ test('commentsToCSV escapes quotes in author name', () => {
   ]
   const csv = commentsToCSV(comments)
   expect(csv).toContain('"User ""Pro"""')
+})
+
+test('commentsToJSON outputs comments array', () => {
+  const comments: Comment[] = [
+    {
+      cid: 'c1',
+      text: 'Hello',
+      author: 'User1',
+      votes: 1,
+      time: '1 day ago',
+    },
+    {
+      cid: 'c2',
+      text: 'Reply',
+      author: 'User2',
+      votes: 2,
+      time: '2 days ago',
+      parent: 'reply',
+    },
+  ]
+
+  const json = commentsToJSON(comments)
+  const parsed = JSON.parse(json) as { comments: Comment[] }
+
+  expect(parsed.comments).toEqual(comments)
+})
+
+test('commentsToMarkdown escapes pipes and newlines', () => {
+  const comments: Comment[] = [
+    {
+      cid: 'c1',
+      text: 'Hello | world\nnext line',
+      author: 'User1',
+      votes: 1,
+      time: '1 day ago',
+    },
+  ]
+
+  const markdown = commentsToMarkdown(comments)
+  expect(markdown).toContain(
+    '| published_time | author | likes | comment_id | parent_id | comment |',
+  )
+  expect(markdown).toContain('Hello \\| world<br>next line')
+})
+
+test('commentsToXlsx splits comments and replies', () => {
+  const comments: Comment[] = [
+    {
+      cid: 'c1',
+      text: 'Top',
+      author: 'User1',
+      votes: 1,
+      time: '1 day ago',
+    },
+    {
+      cid: 'r1',
+      text: 'Reply',
+      author: 'User2',
+      votes: 2,
+      time: '2 days ago',
+      parent: 'reply',
+    },
+  ]
+
+  const data = commentsToXlsx(comments)
+  const workbook = XLSX.read(data, { type: 'array' })
+
+  expect(workbook.SheetNames).toContain('comments')
+  expect(workbook.SheetNames).toContain('replies')
+
+  const commentsSheet = XLSX.utils.sheet_to_json(workbook.Sheets.comments!)
+  const repliesSheet = XLSX.utils.sheet_to_json(workbook.Sheets.replies!)
+
+  expect(commentsSheet).toHaveLength(1)
+  expect(repliesSheet).toHaveLength(1)
 })
 
 describe('downloadComments', () => {

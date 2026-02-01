@@ -8,7 +8,7 @@ test('minLikes default is 0 in UI', async () => {
 test('minLikes default is 0 in API routes', async () => {
   const source = await Bun.file(new URL('./index.ts', import.meta.url)).text()
   const matches = source.match(/minLikes'\)\s*\?\?\s*'0'/g) ?? []
-  expect(matches).toHaveLength(2)
+  expect(matches).toHaveLength(1)
 })
 
 test('minLikes is persisted in localStorage', async () => {
@@ -22,4 +22,47 @@ test('minLikes helper text explains the filter', async () => {
   const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
   expect(html).toContain('Only include comments with at least this many likes.')
   expect(html).toContain('0 = all comments.')
+})
+
+test('invalid YouTube URL message is present', async () => {
+  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
+  expect(html).toContain('Enter a valid YouTube URL')
+  expect(html).toContain('function isValidYouTubeUrl')
+})
+
+test('format default is CSV in UI', async () => {
+  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
+  expect(html).toMatch(/id="format"[\s\S]*?option value="csv" selected/)
+})
+
+test('format choices are listed in UI', async () => {
+  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
+  expect(html).toContain('option value="csv"')
+  expect(html).toContain('option value="json"')
+  expect(html).toContain('option value="xlsx"')
+  expect(html).toContain('option value="md"')
+})
+
+test('format is persisted in localStorage', async () => {
+  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
+  expect(html).toContain("const FORMAT_STORAGE_KEY = 'yt-comments:format'")
+  expect(html).toMatch(/localStorage\.getItem\(FORMAT_STORAGE_KEY\)/)
+  expect(html).toMatch(/localStorage\.setItem\(FORMAT_STORAGE_KEY/)
+})
+
+test('download button starts disabled', async () => {
+  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
+  expect(html).toMatch(/id="download"[^>]*disabled/)
+})
+
+test('download button toggles on url input', async () => {
+  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
+  expect(html).toContain('function updateDownloadEnabled()')
+  expect(html).toContain("urlInput.addEventListener('input', updateDownloadEnabled)")
+  expect(html).toContain('updateDownloadEnabled()')
+})
+
+test('server config sets idleTimeout', async () => {
+  const source = await Bun.file(new URL('./index.ts', import.meta.url)).text()
+  expect(source).toContain('idleTimeout: STREAM_IDLE_TIMEOUT_SECONDS')
 })

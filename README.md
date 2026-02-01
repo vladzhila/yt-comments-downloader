@@ -1,12 +1,12 @@
 # YouTube Comments Downloader
 
-Download comments from YouTube videos and export them as CSV.
+Download comments from YouTube videos and export them as CSV, JSON, XLSX, or Markdown.
 
 ## Features
 
 - Downloads all comments and replies from any YouTube video
 - Filter by minimum likes
-- Exports to CSV (sorted by popularity)
+- Exports to CSV, JSON, XLSX, or Markdown (sorted by popularity)
 - Real-time progress via Server-Sent Events
 
 ## Setup
@@ -30,10 +30,21 @@ Open http://localhost:3000
 
 Server-Sent Events stream for downloading comments.
 
-| Param    | Description                       |
-| -------- | --------------------------------- |
-| url      | YouTube video URL or ID           |
-| minLikes | Minimum likes filter (default: 0) |
+| Param    | Description                        |
+| -------- | ---------------------------------- |
+| url      | YouTube video URL or ID            |
+| minLikes | Minimum likes filter (default: 0)  |
+| format   | csv, json, xlsx, md (default: csv) |
+
+`complete` event payload:
+
+| Field    | Description                              |
+| -------- | ---------------------------------------- |
+| count    | Number of exported comments              |
+| data     | File contents (plain text or base64)     |
+| encoding | `utf-8` for text, `base64` for binary    |
+| filename | Suggested filename for download          |
+| mimeType | MIME type for the selected export format |
 
 ## Development
 
@@ -48,7 +59,9 @@ bun run typecheck     # TypeScript type checking
 
 Pre-commit hooks automatically run lint-staged and checks.
 
-## CSV Format
+## Formats
+
+### CSV
 
 | Column         | Description                     |
 | -------------- | ------------------------------- |
@@ -58,6 +71,21 @@ Pre-commit hooks automatically run lint-staged and checks.
 | comment_id     | Unique comment identifier       |
 | parent_id      | Parent comment ID (for replies) |
 | comment        | Comment text                    |
+
+### JSON
+
+```json
+{ "comments": [{ "cid": "...", "text": "...", "author": "...", "votes": 0, "time": "..." }] }
+```
+
+### XLSX
+
+- `comments` sheet: top-level comments
+- `replies` sheet: replies (parent_id = "reply")
+
+### Markdown
+
+- Markdown table with the same columns as CSV
 
 ## Python CLI
 

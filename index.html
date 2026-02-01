@@ -152,6 +152,12 @@
         border-bottom: 1px solid var(--border);
       }
 
+      .options-row:last-of-type {
+        margin-bottom: 1.25rem;
+        padding-bottom: 0;
+        border-bottom: none;
+      }
+
       .option-text {
         display: flex;
         flex-direction: column;
@@ -194,6 +200,25 @@
       }
 
       .number-input:focus {
+        border-color: var(--text);
+      }
+
+      .select-input {
+        min-width: 150px;
+        padding: 0.5rem 0.75rem;
+        font-family: inherit;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg);
+        color: var(--text);
+        outline: none;
+        transition: border-color 0.2s;
+        appearance: none;
+      }
+
+      .select-input:focus {
         border-color: var(--text);
       }
 
@@ -366,7 +391,22 @@
           </div>
         </div>
 
-        <button id="download" class="submit-btn">Download CSV</button>
+        <div class="options-row">
+          <div class="option-text">
+            <span class="option-label">Format</span>
+            <span class="option-helper">Choose how to export comments.</span>
+          </div>
+          <div class="option-group">
+            <select id="format" class="select-input">
+              <option value="csv" selected>CSV</option>
+              <option value="json">JSON</option>
+              <option value="xlsx">XLSX</option>
+              <option value="md">Markdown</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="download" class="submit-btn" disabled>Download CSV</button>
 
         <div id="status" class="status"></div>
       </div>
@@ -377,12 +417,72 @@
     <script>
       const urlInput = document.getElementById('url')
       const minLikesInput = document.getElementById('minLikes')
+      const formatSelect = document.getElementById('format')
       const downloadBtn = document.getElementById('download')
       const statusDiv = document.getElementById('status')
       const MIN_LIKES_STORAGE_KEY = 'yt-comments:minLikes'
+      const FORMAT_STORAGE_KEY = 'yt-comments:format'
+      const FORMAT_LABELS = {
+        csv: 'CSV',
+        json: 'JSON',
+        xlsx: 'XLSX',
+        md: 'Markdown',
+      }
+      const INVALID_URL_MESSAGE = 'Enter a valid YouTube URL'
+      const REQUIRED_URL_MESSAGE = 'Enter a YouTube URL'
+      const YOUTUBE_PATTERNS = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+      ]
+      const downloadState = { active: false }
 
       const savedMinLikes = localStorage.getItem(MIN_LIKES_STORAGE_KEY)
       if (savedMinLikes !== null) minLikesInput.value = savedMinLikes
+
+      const savedFormat = localStorage.getItem(FORMAT_STORAGE_KEY)
+      if (savedFormat && savedFormat in FORMAT_LABELS) formatSelect.value = savedFormat
+
+      function updateDownloadLabel() {
+        const label = FORMAT_LABELS[formatSelect.value] ?? FORMAT_LABELS.csv
+        downloadBtn.textContent = `Download ${label}`
+      }
+
+      function updateDownloadEnabled() {
+        downloadBtn.disabled = downloadState.active || !urlInput.value.trim()
+      }
+
+      function setDownloadActive(active) {
+        downloadState.active = active
+        updateDownloadEnabled()
+      }
+
+      function base64ToUint8Array(base64) {
+        const binary = atob(base64)
+        const bytes = new Uint8Array(binary.length)
+        Array.from(binary).forEach((char, index) => {
+          bytes[index] = char.charCodeAt(0)
+        })
+        return bytes
+      }
+
+      function createDownloadBlob(payload) {
+        if (payload.encoding === 'base64') {
+          const bytes = base64ToUint8Array(payload.data)
+          return new Blob([bytes], { type: payload.mimeType })
+        }
+        return new Blob([payload.data], { type: payload.mimeType })
+      }
+
+      function isLikelyVideoId(value) {
+        return value.length === 11 && !value.includes('/')
+      }
+
+      function isValidYouTubeUrl(value) {
+        if (isLikelyVideoId(value)) return true
+        return YOUTUBE_PATTERNS.some((pattern) => pattern.test(value))
+      }
 
       function setStatus(type, message, count) {
         statusDiv.className = `status visible ${type}`
@@ -395,17 +495,27 @@
       async function downloadComments() {
         const url = urlInput.value.trim()
         const minLikes = parseInt(minLikesInput.value, 10) || 0
+        const format = formatSelect.value
 
         if (!url) {
-          setStatus('error', 'Enter a YouTube URL')
+          setStatus('error', REQUIRED_URL_MESSAGE)
           return
         }
 
-        downloadBtn.disabled = true
+        if (!isValidYouTubeUrl(url)) {
+          setStatus('error', INVALID_URL_MESSAGE)
+          return
+        }
+
+        setDownloadActive(true)
         setStatus('loading', 'Connecting...')
 
         try {
-          const params = new URLSearchParams({ url, minLikes: String(minLikes) })
+          const params = new URLSearchParams({
+            url,
+            minLikes: String(minLikes),
+            format,
+          })
           const eventSource = new EventSource(`/api/comments/stream?${params}`)
 
           eventSource.addEventListener('status', (e) => {
@@ -422,7 +532,7 @@
             const data = JSON.parse(e.data)
             eventSource.close()
 
-            const blob = new Blob([data.csv], { type: 'text/csv' })
+            const blob = createDownloadBlob(data)
             const downloadUrl = URL.createObjectURL(blob)
             const a = document.createElement('a')
             a.href = downloadUrl
@@ -431,7 +541,7 @@
             URL.revokeObjectURL(downloadUrl)
 
             setStatus('success', 'Download complete', data.count)
-            downloadBtn.disabled = false
+            setDownloadActive(false)
           })
 
           eventSource.addEventListener('error', (e) => {
@@ -442,16 +552,11 @@
               setStatus('error', 'Connection lost')
             }
             eventSource.close()
-            downloadBtn.disabled = false
+            setDownloadActive(false)
           })
-
-          eventSource.onerror = () => {
-            eventSource.close()
-            downloadBtn.disabled = false
-          }
         } catch {
           setStatus('error', 'Connection failed')
-          downloadBtn.disabled = false
+          setDownloadActive(false)
         }
       }
 
@@ -459,9 +564,17 @@
       urlInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') downloadComments()
       })
+      urlInput.addEventListener('input', updateDownloadEnabled)
       minLikesInput.addEventListener('input', () => {
         localStorage.setItem(MIN_LIKES_STORAGE_KEY, minLikesInput.value)
       })
+      formatSelect.addEventListener('change', () => {
+        localStorage.setItem(FORMAT_STORAGE_KEY, formatSelect.value)
+        updateDownloadLabel()
+      })
+
+      updateDownloadLabel()
+      updateDownloadEnabled()
     </script>
   </body>
 </html>

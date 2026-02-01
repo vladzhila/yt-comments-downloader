@@ -1,5 +1,13 @@
 import index from './index.html'
-import { downloadComments, commentsToCSV, extractVideoId } from './youtube.ts'
+import {
+  downloadComments,
+  commentsToCSV,
+  commentsToJSON,
+  commentsToMarkdown,
+  commentsToXlsx,
+  extractVideoId,
+} from './youtube.ts'
+import type { Comment } from './youtube.ts'
 
 function sanitizeFilename(name: string): string {
   return name
@@ -9,25 +17,112 @@ function sanitizeFilename(name: string): string {
     .slice(0, 200)
 }
 
+const DEFAULT_DOWNLOAD_FORMAT = 'csv'
+const FALLBACK_FILENAME_PREFIX = 'yt_'
+const STREAM_ENCODING_TEXT = 'utf-8'
+const STREAM_ENCODING_BASE64 = 'base64'
+const FORMAT_QUERY_PARAM = 'format'
+const STREAM_IDLE_TIMEOUT_SECONDS = 120
+
+const FORMAT_META = {
+  csv: { extension: 'csv', mimeType: 'text/csv; charset=utf-8' },
+  json: { extension: 'json', mimeType: 'application/json; charset=utf-8' },
+  xlsx: {
+    extension: 'xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  },
+  md: { extension: 'md', mimeType: 'text/markdown; charset=utf-8' },
+} as const
+
+const FORMAT_BUILDERS = {
+  csv: commentsToCSV,
+  json: commentsToJSON,
+  md: commentsToMarkdown,
+  xlsx: commentsToXlsx,
+} satisfies Record<DownloadFormat, (comments: readonly Comment[]) => string | Uint8Array>
+
+type DownloadFormat = keyof typeof FORMAT_META
+type StreamEncoding = typeof STREAM_ENCODING_TEXT | typeof STREAM_ENCODING_BASE64
+
+type RequestParams = {
+  videoUrl: string
+  videoId: string
+  minLikes: number
+  format: DownloadFormat
+}
+
+function isDownloadFormat(value: string): value is DownloadFormat {
+  return Object.hasOwn(FORMAT_META, value)
+}
+
+function parseDownloadFormat(value: string | null): DownloadFormat {
+  if (!value) return DEFAULT_DOWNLOAD_FORMAT
+  return isDownloadFormat(value) ? value : DEFAULT_DOWNLOAD_FORMAT
+}
+
+function parseRequestParams(req: Request): RequestParams | Response {
+  const url = new URL(req.url)
+  const videoUrl = url.searchParams.get('url')
+  if (!videoUrl) {
+    return Response.json({ error: 'Missing url parameter' }, { status: 400 })
+  }
+
+  const videoId = extractVideoId(videoUrl)
+  if (!videoId) {
+    return Response.json({ error: 'Invalid YouTube URL' }, { status: 400 })
+  }
+
+  const minLikes = parseInt(url.searchParams.get('minLikes') ?? '0', 10)
+  const format = parseDownloadFormat(url.searchParams.get(FORMAT_QUERY_PARAM))
+
+  return { videoUrl, videoId, minLikes, format }
+}
+
+function buildDownloadFilename(
+  videoTitle: string | undefined,
+  videoId: string,
+  format: DownloadFormat,
+): string {
+  const baseName = videoTitle
+    ? sanitizeFilename(videoTitle)
+    : `${FALLBACK_FILENAME_PREFIX}${videoId}`
+  return `${baseName}.${FORMAT_META[format].extension}`
+}
+
+function buildDownloadData(
+  format: DownloadFormat,
+  comments: readonly Comment[],
+): string | Uint8Array {
+  return FORMAT_BUILDERS[format](comments)
+}
+
+function buildStreamPayload(
+  format: DownloadFormat,
+  comments: readonly Comment[],
+  filename: string,
+): { data: string; encoding: StreamEncoding; filename: string; mimeType: string } {
+  const data = buildDownloadData(format, comments)
+  const mimeType = FORMAT_META[format].mimeType
+
+  if (typeof data === 'string') {
+    return { data, encoding: STREAM_ENCODING_TEXT, filename, mimeType }
+  }
+
+  const base64 = Buffer.from(data).toString('base64')
+  return { data: base64, encoding: STREAM_ENCODING_BASE64, filename, mimeType }
+}
+
 const server = Bun.serve({
   port: 3000,
+  idleTimeout: STREAM_IDLE_TIMEOUT_SECONDS,
   routes: {
     '/': index,
 
     '/api/comments': {
       async GET(req) {
-        const url = new URL(req.url)
-        const videoUrl = url.searchParams.get('url')
-        const minLikes = parseInt(url.searchParams.get('minLikes') ?? '0', 10)
-
-        if (!videoUrl) {
-          return Response.json({ error: 'Missing url parameter' }, { status: 400 })
-        }
-
-        const videoId = extractVideoId(videoUrl)
-        if (!videoId) {
-          return Response.json({ error: 'Invalid YouTube URL' }, { status: 400 })
-        }
+        const params = parseRequestParams(req)
+        if (params instanceof Response) return params
+        const { videoUrl, videoId, minLikes, format } = params
 
         const result = await downloadComments(videoUrl, { minLikes, signal: req.signal })
 
@@ -35,13 +130,12 @@ const server = Bun.serve({
           return Response.json({ error: result.error }, { status: 500 })
         }
 
-        const csv = commentsToCSV(result.comments)
-        const baseName = result.videoTitle ? sanitizeFilename(result.videoTitle) : `yt_${videoId}`
-        const filename = `${baseName}.csv`
+        const data = buildDownloadData(format, result.comments)
+        const filename = buildDownloadFilename(result.videoTitle, videoId, format)
 
-        return new Response(csv, {
+        return new Response(data, {
           headers: {
-            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Type': FORMAT_META[format].mimeType,
             'Content-Disposition': `attachment; filename="${filename}"`,
           },
         })
@@ -50,18 +144,9 @@ const server = Bun.serve({
 
     '/api/comments/stream': {
       async GET(req) {
-        const url = new URL(req.url)
-        const videoUrl = url.searchParams.get('url')
-        const minLikes = parseInt(url.searchParams.get('minLikes') ?? '0', 10)
-
-        if (!videoUrl) {
-          return Response.json({ error: 'Missing url parameter' }, { status: 400 })
-        }
-
-        const videoId = extractVideoId(videoUrl)
-        if (!videoId) {
-          return Response.json({ error: 'Invalid YouTube URL' }, { status: 400 })
-        }
+        const params = parseRequestParams(req)
+        if (params instanceof Response) return params
+        const { videoUrl, videoId, minLikes, format } = params
 
         const abortController = new AbortController()
         const { signal } = abortController
@@ -105,14 +190,11 @@ const server = Bun.serve({
               return
             }
 
-            const csv = commentsToCSV(result.comments)
-            const baseName = result.videoTitle
-              ? sanitizeFilename(result.videoTitle)
-              : `yt_${videoId}`
+            const filename = buildDownloadFilename(result.videoTitle, videoId, format)
+            const payload = buildStreamPayload(format, result.comments, filename)
             sendEvent('complete', {
               count: result.comments.length,
-              csv,
-              filename: `${baseName}.csv`,
+              ...payload,
             })
 
             closeStream()
