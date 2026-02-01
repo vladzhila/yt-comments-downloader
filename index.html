@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>YT Comments</title>
+    <title>YouTube Comments Downloader</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -177,12 +177,50 @@
         gap: 0.75rem;
       }
 
-      .theme-label {
-        font-size: 0.75rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--text-muted);
+      .theme-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4rem 0.7rem 0.4rem 0.6rem;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--input-bg);
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s,
+          background 0.2s;
+        cursor: pointer;
+      }
+
+      .theme-pill:focus-within {
+        border-color: var(--text);
+        box-shadow: 0 0 0 3px var(--focus-ring);
+      }
+
+      .theme-pill::after {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-right: 1.5px solid var(--text-muted);
+        border-bottom: 1.5px solid var(--text-muted);
+        transform: rotate(45deg);
+        margin-left: 0.15rem;
+      }
+
+      .theme-icon {
+        width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .theme-icon svg {
+        width: 16px;
+        height: 16px;
+        stroke: var(--text-muted);
+        fill: none;
+        stroke-width: 1.6;
       }
 
       .card {
@@ -310,7 +348,14 @@
       }
 
       .select-input.theme-select {
-        min-width: 100px;
+        min-width: 64px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--text);
+        cursor: pointer;
       }
 
       .select-input:focus {
@@ -461,21 +506,27 @@
               />
             </svg>
           </div>
-          <span class="logo-text">Comments</span>
+          <span class="logo-text">YouTube Comments Downloader</span>
         </div>
         <div class="theme-toggle">
-          <label class="theme-label" for="theme">Theme</label>
-          <select id="theme" class="select-input theme-select">
-            <option value="system" selected>System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
+          <label class="theme-pill" for="theme">
+            <span class="theme-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 15.5a8.5 8.5 0 1 1-9-12 7 7 0 0 0 9 12z" />
+              </svg>
+            </span>
+            <select id="theme" class="select-input theme-select">
+              <option value="system" selected>System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </label>
         </div>
       </div>
 
       <div class="card">
         <div class="input-wrapper">
-          <label class="input-label" for="url">Video URL</label>
+          <label class="input-label" for="url">YouTube Video URL</label>
           <input
             type="text"
             id="url"
@@ -534,6 +585,7 @@
       const minLikesInput = document.getElementById('minLikes')
       const formatSelect = document.getElementById('format')
       const themeSelect = document.getElementById('theme')
+      const themePill = document.querySelector('.theme-pill')
       const downloadBtn = document.getElementById('download')
       const statusDiv = document.getElementById('status')
       const MIN_LIKES_STORAGE_KEY = 'yt-comments:minLikes'
@@ -706,6 +758,22 @@
         localStorage.setItem(THEME_STORAGE_KEY, themeSelect.value)
         applyTheme(themeSelect.value)
       })
+
+      function openThemePicker() {
+        if (typeof themeSelect.showPicker === 'function') {
+          themeSelect.showPicker()
+          return
+        }
+        themeSelect.focus()
+        themeSelect.click()
+      }
+
+      function handleThemePillClick(event) {
+        if (event.target === themeSelect) return
+        openThemePicker()
+      }
+
+      if (themePill) themePill.addEventListener('click', handleThemePillClick)
 
       updateDownloadLabel()
       updateDownloadEnabled()
