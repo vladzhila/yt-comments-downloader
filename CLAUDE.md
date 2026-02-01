@@ -41,3 +41,13 @@ bun run check         # Lint + test in parallel
 - Use `bun test` instead of jest/vitest
 - Bun.serve() for HTTP (not express)
 - HTML imports work directly with Bun's bundler
+
+## Verification Workflow
+
+**Before declaring a feature "done":**
+
+1. CRITICAL: every implementation must end with adding/updating tests
+2. CRITICAL: Coverage target: 80-90%. Prioritize test quality over chasing 100% (`bun run test:coverage`)
+3. CRITICAL: runs lint, typecheck, and test concurrently (`bun run check`); all must pass
+4. CRITICAL: all documents (e.g. readme, claude md files) must be updated and actualized
+5. ALWAYS REMOVE DEAD CODE. ALWAYS remove any code that proved unnecessary or didn’t work during the session
