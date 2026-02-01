@@ -358,6 +358,10 @@
       const minLikesInput = document.getElementById('minLikes')
       const downloadBtn = document.getElementById('download')
       const statusDiv = document.getElementById('status')
+      const MIN_LIKES_STORAGE_KEY = 'yt-comments:minLikes'
+
+      const savedMinLikes = localStorage.getItem(MIN_LIKES_STORAGE_KEY)
+      if (savedMinLikes !== null) minLikesInput.value = savedMinLikes
 
       function setStatus(type, message, count) {
         statusDiv.className = `status visible ${type}`
@@ -433,6 +437,9 @@
       downloadBtn.addEventListener('click', downloadComments)
       urlInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') downloadComments()
+      })
+      minLikesInput.addEventListener('input', () => {
+        localStorage.setItem(MIN_LIKES_STORAGE_KEY, minLikesInput.value)
       })
     </script>
   </body>
