@@ -5,6 +5,13 @@ test('minLikes default is 0 in UI', async () => {
   expect(html).toMatch(/id="minLikes"[\s\S]*?value="0"/)
 })
 
+test('dark theme styles are defined', async () => {
+  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
+  expect(html).toContain('color-scheme: light dark')
+  expect(html).toContain('@media (prefers-color-scheme: dark)')
+  expect(html).toContain('--bg: #0f1115')
+})
+
 test('minLikes default is 0 in API routes', async () => {
   const source = await Bun.file(new URL('./index.ts', import.meta.url)).text()
   const matches = source.match(/minLikes'\)\s*\?\?\s*'0'/g) ?? []
@@ -43,11 +50,25 @@ test('format choices are listed in UI', async () => {
   expect(html).toContain('option value="md"')
 })
 
+test('theme default is system in UI', async () => {
+  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
+  expect(html).toMatch(/id="theme"[\s\S]*?option value="system" selected/)
+  expect(html).toContain('option value="light"')
+  expect(html).toContain('option value="dark"')
+})
+
 test('format is persisted in localStorage', async () => {
   const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
   expect(html).toContain("const FORMAT_STORAGE_KEY = 'yt-comments:format'")
   expect(html).toMatch(/localStorage\.getItem\(FORMAT_STORAGE_KEY\)/)
   expect(html).toMatch(/localStorage\.setItem\(FORMAT_STORAGE_KEY/)
+})
+
+test('theme is persisted in localStorage', async () => {
+  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
+  expect(html).toContain("const THEME_STORAGE_KEY = 'yt-comments:theme'")
+  expect(html).toMatch(/localStorage\.getItem\(THEME_STORAGE_KEY\)/)
+  expect(html).toMatch(/localStorage\.setItem\(THEME_STORAGE_KEY/)
 })
 
 test('download button starts disabled', async () => {

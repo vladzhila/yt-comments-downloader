@@ -12,6 +12,7 @@
     />
     <style>
       :root {
+        color-scheme: light dark;
         --bg: #fafafa;
         --surface: #fff;
         --text: #1a1a1a;
@@ -21,6 +22,70 @@
         --accent-hover: #d62839;
         --success: #2a9d8f;
         --error: #e63946;
+        --input-bg: #f6f6f6;
+        --placeholder: #b5b5b5;
+        --focus-ring: rgba(26, 26, 26, 0.06);
+        --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
+        --button-bg: #1a1a1a;
+        --button-hover: #333;
+        --button-text: #fafafa;
+        --status-success-bg: #f0fdf9;
+        --status-success-border: #d1fae5;
+        --status-error-bg: #fef2f2;
+        --status-error-border: #fecaca;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+          --bg: #0f1115;
+          --surface: #171a20;
+          --text: #f4f1e9;
+          --text-muted: #a4a7ad;
+          --border: #2a2f39;
+          --accent: #ff6b6b;
+          --accent-hover: #ff4d4d;
+          --success: #52b2a5;
+          --error: #ff6b6b;
+          --input-bg: #12141a;
+          --placeholder: #6f7682;
+          --focus-ring: rgba(244, 241, 233, 0.08);
+          --card-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+          --button-bg: #f4f1e9;
+          --button-hover: #ffffff;
+          --button-text: #14161c;
+          --status-success-bg: rgba(82, 178, 165, 0.14);
+          --status-success-border: rgba(82, 178, 165, 0.35);
+          --status-error-bg: rgba(255, 107, 107, 0.12);
+          --status-error-border: rgba(255, 107, 107, 0.35);
+        }
+      }
+
+      :root[data-theme='light'] {
+        color-scheme: light;
+      }
+
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #0f1115;
+        --surface: #171a20;
+        --text: #f4f1e9;
+        --text-muted: #a4a7ad;
+        --border: #2a2f39;
+        --accent: #ff6b6b;
+        --accent-hover: #ff4d4d;
+        --success: #52b2a5;
+        --error: #ff6b6b;
+        --input-bg: #12141a;
+        --placeholder: #6f7682;
+        --focus-ring: rgba(244, 241, 233, 0.08);
+        --card-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+        --button-bg: #f4f1e9;
+        --button-hover: #ffffff;
+        --button-text: #14161c;
+        --status-success-bg: rgba(82, 178, 165, 0.14);
+        --status-success-border: rgba(82, 178, 165, 0.35);
+        --status-error-bg: rgba(255, 107, 107, 0.12);
+        --status-error-border: rgba(255, 107, 107, 0.35);
       }
 
       * {
@@ -47,12 +112,24 @@
         justify-content: center;
         padding: 2rem;
         line-height: 1.5;
+        transition:
+          background 0.3s ease,
+          color 0.3s ease;
       }
 
       .container {
         width: 100%;
         max-width: 480px;
         animation: fadeUp 0.6s ease-out;
+      }
+
+      .header {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 3rem;
+        gap: 1rem;
       }
 
       @keyframes fadeUp {
@@ -70,7 +147,6 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        margin-bottom: 3rem;
       }
 
       .logo-icon {
@@ -95,13 +171,28 @@
         letter-spacing: -0.02em;
       }
 
+      .theme-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .theme-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+      }
+
       .card {
         background: var(--surface);
         border-radius: 16px;
         padding: 2rem;
-        box-shadow:
-          0 1px 3px rgba(0, 0, 0, 0.04),
-          0 4px 12px rgba(0, 0, 0, 0.03);
+        box-shadow: var(--card-shadow);
+        transition:
+          background 0.3s ease,
+          box-shadow 0.3s ease;
       }
 
       .input-wrapper {
@@ -126,7 +217,7 @@
         font-size: 0.9375rem;
         border: 1px solid var(--border);
         border-radius: 10px;
-        background: var(--bg);
+        background: var(--input-bg);
         color: var(--text);
         outline: none;
         transition:
@@ -135,12 +226,12 @@
       }
 
       .url-input::placeholder {
-        color: #bbb;
+        color: var(--placeholder);
       }
 
       .url-input:focus {
         border-color: var(--text);
-        box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.06);
+        box-shadow: 0 0 0 3px var(--focus-ring);
       }
 
       .options-row {
@@ -193,7 +284,7 @@
         text-align: center;
         border: 1px solid var(--border);
         border-radius: 8px;
-        background: var(--bg);
+        background: var(--input-bg);
         color: var(--text);
         outline: none;
         transition: border-color 0.2s;
@@ -211,11 +302,15 @@
         font-weight: 500;
         border: 1px solid var(--border);
         border-radius: 8px;
-        background: var(--bg);
+        background: var(--input-bg);
         color: var(--text);
         outline: none;
         transition: border-color 0.2s;
         appearance: none;
+      }
+
+      .select-input.theme-select {
+        min-width: 100px;
       }
 
       .select-input:focus {
@@ -229,8 +324,8 @@
         font-size: 0.9375rem;
         font-weight: 500;
         letter-spacing: -0.01em;
-        background: var(--text);
-        color: var(--bg);
+        background: var(--button-bg);
+        color: var(--button-text);
         border: none;
         border-radius: 10px;
         cursor: pointer;
@@ -241,7 +336,7 @@
       }
 
       .submit-btn:hover:not(:disabled) {
-        background: #333;
+        background: var(--button-hover);
       }
 
       .submit-btn:active:not(:disabled) {
@@ -301,15 +396,15 @@
       }
 
       .status.success {
-        background: #f0fdf9;
+        background: var(--status-success-bg);
         color: var(--success);
-        border: 1px solid #d1fae5;
+        border: 1px solid var(--status-success-border);
       }
 
       .status.error {
-        background: #fef2f2;
+        background: var(--status-error-bg);
         color: var(--error);
-        border: 1px solid #fecaca;
+        border: 1px solid var(--status-error-border);
       }
 
       .status-count {
@@ -342,20 +437,40 @@
           align-items: flex-start;
           gap: 0.75rem;
         }
+
+        .header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 1.25rem;
+        }
+
+        .theme-toggle {
+          align-self: flex-end;
+        }
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <div class="logo">
-        <div class="logo-icon">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0C.488 3.45.029 5.804 0 12c.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0C23.512 20.55 23.971 18.196 24 12c-.029-6.185-.484-8.549-4.385-8.816zM9 16V8l8 3.993L9 16z"
-            />
-          </svg>
+      <div class="header">
+        <div class="logo">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0C.488 3.45.029 5.804 0 12c.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0C23.512 20.55 23.971 18.196 24 12c-.029-6.185-.484-8.549-4.385-8.816zM9 16V8l8 3.993L9 16z"
+              />
+            </svg>
+          </div>
+          <span class="logo-text">Comments</span>
         </div>
-        <span class="logo-text">Comments</span>
+        <div class="theme-toggle">
+          <label class="theme-label" for="theme">Theme</label>
+          <select id="theme" class="select-input theme-select">
+            <option value="system" selected>System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
       </div>
 
       <div class="card">
@@ -418,10 +533,13 @@
       const urlInput = document.getElementById('url')
       const minLikesInput = document.getElementById('minLikes')
       const formatSelect = document.getElementById('format')
+      const themeSelect = document.getElementById('theme')
       const downloadBtn = document.getElementById('download')
       const statusDiv = document.getElementById('status')
       const MIN_LIKES_STORAGE_KEY = 'yt-comments:minLikes'
       const FORMAT_STORAGE_KEY = 'yt-comments:format'
+      const THEME_STORAGE_KEY = 'yt-comments:theme'
+      const THEMES = new Set(['system', 'light', 'dark'])
       const FORMAT_LABELS = {
         csv: 'CSV',
         json: 'JSON',
@@ -444,6 +562,9 @@
       const savedFormat = localStorage.getItem(FORMAT_STORAGE_KEY)
       if (savedFormat && savedFormat in FORMAT_LABELS) formatSelect.value = savedFormat
 
+      const savedTheme = localStorage.getItem(THEME_STORAGE_KEY)
+      if (savedTheme && THEMES.has(savedTheme)) themeSelect.value = savedTheme
+
       function updateDownloadLabel() {
         const label = FORMAT_LABELS[formatSelect.value] ?? FORMAT_LABELS.csv
         downloadBtn.textContent = `Download ${label}`
@@ -451,6 +572,14 @@
 
       function updateDownloadEnabled() {
         downloadBtn.disabled = downloadState.active || !urlInput.value.trim()
+      }
+
+      function applyTheme(theme) {
+        if (theme === 'system') {
+          document.documentElement.removeAttribute('data-theme')
+          return
+        }
+        document.documentElement.setAttribute('data-theme', theme)
       }
 
       function setDownloadActive(active) {
@@ -573,8 +702,14 @@
         updateDownloadLabel()
       })
 
+      themeSelect.addEventListener('change', () => {
+        localStorage.setItem(THEME_STORAGE_KEY, themeSelect.value)
+        applyTheme(themeSelect.value)
+      })
+
       updateDownloadLabel()
       updateDownloadEnabled()
+      applyTheme(themeSelect.value)
     </script>
   </body>
 </html>

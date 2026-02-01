@@ -7,6 +7,7 @@ Download comments from YouTube videos and export them as CSV, JSON, XLSX, or Mar
 - Downloads all comments and replies from any YouTube video
 - Filter by minimum likes
 - Exports to CSV, JSON, XLSX, or Markdown (sorted by popularity)
+- Theme toggle (system, light, dark)
 - Real-time progress via Server-Sent Events
 
 ## Setup
