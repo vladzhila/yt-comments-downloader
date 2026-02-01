@@ -13,7 +13,7 @@ from pathlib import Path
 from youtube_comment_downloader import YoutubeCommentDownloader
 
 # Minimum likes threshold for including comments
-MIN_LIKES_THRESHOLD = 3
+MIN_LIKES_THRESHOLD = 0
 
 
 def extract_video_id(url_or_id):
