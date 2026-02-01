@@ -17,3 +17,9 @@ test('minLikes is persisted in localStorage', async () => {
   expect(html).toMatch(/localStorage\.getItem\(MIN_LIKES_STORAGE_KEY\)/)
   expect(html).toMatch(/localStorage\.setItem\(MIN_LIKES_STORAGE_KEY/)
 })
+
+test('minLikes helper text explains the filter', async () => {
+  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
+  expect(html).toContain('Only include comments with at least this many likes.')
+  expect(html).toContain('0 = all comments.')
+})

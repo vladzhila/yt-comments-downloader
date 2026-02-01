@@ -145,11 +145,17 @@
 
       .options-row {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
         margin-bottom: 1.5rem;
         padding-bottom: 1.5rem;
         border-bottom: 1px solid var(--border);
+      }
+
+      .option-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
       }
 
       .option-group {
@@ -161,6 +167,15 @@
       .option-label {
         font-size: 0.875rem;
         color: var(--text-muted);
+      }
+
+      .option-helper {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+
+      .option-helper-detail {
+        display: block;
       }
 
       .number-input {
@@ -332,7 +347,13 @@
         </div>
 
         <div class="options-row">
-          <span class="option-label">Minimum likes</span>
+          <div class="option-text">
+            <span class="option-label">Minimum likes</span>
+            <span class="option-helper">
+              Only include comments with at least this many likes.
+              <span class="option-helper-detail">0 = all comments.</span>
+            </span>
+          </div>
           <div class="option-group">
             <input
               type="number"
