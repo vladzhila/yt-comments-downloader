@@ -33,7 +33,7 @@ Server-Sent Events stream for downloading comments.
 | Param    | Description                       |
 | -------- | --------------------------------- |
 | url      | YouTube video URL or ID           |
-| minLikes | Minimum likes filter (default: 3) |
+| minLikes | Minimum likes filter (default: 0) |
 
 ## Development
 

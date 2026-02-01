@@ -18,7 +18,7 @@ const server = Bun.serve({
       async GET(req) {
         const url = new URL(req.url)
         const videoUrl = url.searchParams.get('url')
-        const minLikes = parseInt(url.searchParams.get('minLikes') ?? '3', 10)
+        const minLikes = parseInt(url.searchParams.get('minLikes') ?? '0', 10)
 
         if (!videoUrl) {
           return Response.json({ error: 'Missing url parameter' }, { status: 400 })
@@ -52,7 +52,7 @@ const server = Bun.serve({
       async GET(req) {
         const url = new URL(req.url)
         const videoUrl = url.searchParams.get('url')
-        const minLikes = parseInt(url.searchParams.get('minLikes') ?? '3', 10)
+        const minLikes = parseInt(url.searchParams.get('minLikes') ?? '0', 10)
 
         if (!videoUrl) {
           return Response.json({ error: 'Missing url parameter' }, { status: 400 })
