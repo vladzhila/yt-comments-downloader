@@ -60,6 +60,14 @@ bun run typecheck     # TypeScript type checking
 
 Pre-commit hooks automatically run lint-staged and checks.
 
+## Project structure
+
+- `index.ts`: server entrypoint and route wiring
+- `server/`: request parsing, handlers, and response formatting
+- `youtube.ts`: public exports for the YouTube client
+- `youtube/`: fetch, parse, and format internals
+- `index.html`: frontend UI
+
 ## Formats
 
 ### CSV

@@ -23,8 +23,10 @@ bun run check         # Lint + test in parallel
 
 ## Key Files
 
-- `youtube.ts` - Core YouTube API client
-- `index.ts` - HTTP server with routes
+- `index.ts` - HTTP server entrypoint and routing
+- `server/` - Server helpers (params, handlers, format builders)
+- `youtube.ts` - Public YouTube client exports
+- `youtube/` - YouTube client internals (fetch, parsing, formatting)
 - `index.html` - Frontend (embedded CSS/JS)
 - `python/` - Alternative Python CLI version
 
