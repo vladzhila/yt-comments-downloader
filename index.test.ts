@@ -12,8 +12,8 @@ test('dark theme styles are defined', async () => {
   expect(html).toContain('--bg: #0f1115')
 })
 
-test('minLikes default is 0 in API routes', async () => {
-  const source = await Bun.file(new URL('./index.ts', import.meta.url)).text()
+test('minLikes default is 0 in API params', async () => {
+  const source = await Bun.file(new URL('./server/params.ts', import.meta.url)).text()
   const matches = source.match(/minLikes'\)\s*\?\?\s*'0'/g) ?? []
   expect(matches).toHaveLength(1)
 })
