@@ -29,7 +29,7 @@ const server = Bun.serve({
           return Response.json({ error: 'Invalid YouTube URL' }, { status: 400 })
         }
 
-        const result = await downloadComments(videoUrl, { minLikes })
+        const result = await downloadComments(videoUrl, { minLikes, signal: req.signal })
 
         if (result.error) {
           return Response.json({ error: result.error }, { status: 500 })
@@ -63,14 +63,29 @@ const server = Bun.serve({
           return Response.json({ error: 'Invalid YouTube URL' }, { status: 400 })
         }
 
+        const abortController = new AbortController()
+        const { signal } = abortController
         const encoder = new TextEncoder()
+        const streamState = { closed: false }
         const stream = new ReadableStream({
           async start(controller) {
+            const closeStream = () => {
+              if (streamState.closed) return
+              streamState.closed = true
+              controller.close()
+            }
+
             const sendEvent = (event: string, data: unknown) => {
+              if (streamState.closed) return
               controller.enqueue(
                 encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
               )
             }
+
+            const abort = () => abortController.abort()
+            if (req.signal.aborted) abort()
+            req.signal.addEventListener('abort', abort, { once: true })
+            signal.addEventListener('abort', closeStream, { once: true })
 
             sendEvent('status', { message: 'Starting download...' })
 
@@ -79,23 +94,31 @@ const server = Bun.serve({
               onProgress(processed, filtered) {
                 sendEvent('progress', { processed, filtered })
               },
+              signal,
             })
 
             if (result.error) {
-              sendEvent('error', { message: result.error })
-            } else {
-              const csv = commentsToCSV(result.comments)
-              const baseName = result.videoTitle
-                ? sanitizeFilename(result.videoTitle)
-                : `yt_${videoId}`
-              sendEvent('complete', {
-                count: result.comments.length,
-                csv,
-                filename: `${baseName}.csv`,
-              })
+              if (!signal.aborted) {
+                sendEvent('error', { message: result.error })
+              }
+              closeStream()
+              return
             }
 
-            controller.close()
+            const csv = commentsToCSV(result.comments)
+            const baseName = result.videoTitle
+              ? sanitizeFilename(result.videoTitle)
+              : `yt_${videoId}`
+            sendEvent('complete', {
+              count: result.comments.length,
+              csv,
+              filename: `${baseName}.csv`,
+            })
+
+            closeStream()
+          },
+          cancel() {
+            abortController.abort()
           },
         })
 

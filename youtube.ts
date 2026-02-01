@@ -1,7 +1,12 @@
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
-const YOUTUBE_URL = 'https://www.youtube.com'
+const DEFAULT_YOUTUBE_URL = 'https://www.youtube.com'
+const WATCH_PATH = '/watch'
+const NEXT_PATH = '/youtubei/v1/next'
+const CONTINUATION_DELAY_MS = 100
+const ABORT_ERROR_NAME = 'AbortError'
+const CANCELLED_ERROR_MESSAGE = 'Request cancelled'
 
 interface Comment {
   cid: string
@@ -89,13 +94,34 @@ function extractVideoId(urlOrId: string): string | null {
   return null
 }
 
-async function fetchPage(videoId: string): Promise<string> {
-  const url = `${YOUTUBE_URL}/watch?v=${videoId}`
+function createAbortError(): Error {
+  const err = new Error(CANCELLED_ERROR_MESSAGE)
+  err.name = ABORT_ERROR_NAME
+  return err
+}
+
+function abortIfNeeded(signal?: AbortSignal): void {
+  if (!signal?.aborted) return
+  throw createAbortError()
+}
+
+function isAbortError(err: unknown): boolean {
+  return err instanceof Error && err.name === ABORT_ERROR_NAME
+}
+
+function normalizeBaseUrl(url: string): string {
+  if (!url.endsWith('/')) return url
+  return url.slice(0, -1)
+}
+
+async function fetchPage(baseUrl: string, videoId: string, signal?: AbortSignal): Promise<string> {
+  const url = `${baseUrl}${WATCH_PATH}?v=${videoId}`
   const response = await fetch(url, {
     headers: {
       'User-Agent': USER_AGENT,
       'Accept-Language': 'en-US,en;q=0.9',
     },
+    signal,
   })
 
   if (!response.ok) {
@@ -240,21 +266,24 @@ const COMMENT_SECTION_IDS = [
 ]
 
 async function fetchComments(
+  baseUrl: string,
   apiKey: string,
   initialEndpoint: ContinuationEndpoint,
   minLikes: number,
   onProgress?: (count: number, filtered: number) => void,
+  signal?: AbortSignal,
 ): Promise<Comment[]> {
   const comments: Comment[] = []
   const continuations: ContinuationEndpoint[] = [initialEndpoint]
   let totalProcessed = 0
 
   while (continuations.length > 0) {
+    abortIfNeeded(signal)
     const continuation = continuations.pop()!
     const token = continuation.continuationCommand?.token
     if (!token) continue
 
-    const response = await fetch(`${YOUTUBE_URL}/youtubei/v1/next?key=${apiKey}`, {
+    const response = await fetch(`${baseUrl}${NEXT_PATH}?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -269,6 +298,7 @@ async function fetchComments(
         },
         continuation: token,
       }),
+      signal,
     })
 
     if (!response.ok) {
@@ -281,7 +311,7 @@ async function fetchComments(
     comments.push(...batchComments)
     totalProcessed += mutations.length
 
-    if (onProgress && mutations.length > 0) {
+    if (onProgress && mutations.length > 0 && !signal?.aborted) {
       onProgress(totalProcessed, comments.length)
     }
 
@@ -317,7 +347,8 @@ async function fetchComments(
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    abortIfNeeded(signal)
+    await new Promise((resolve) => setTimeout(resolve, CONTINUATION_DELAY_MS))
   }
 
   return comments
@@ -326,20 +357,24 @@ async function fetchComments(
 interface DownloadOptions {
   minLikes?: number
   onProgress?: (processed: number, filtered: number) => void
+  signal?: AbortSignal
+  baseUrl?: string
 }
 
 export async function downloadComments(
   urlOrId: string,
   options: DownloadOptions = {},
 ): Promise<CommentResult> {
-  const { minLikes = 3, onProgress } = options
+  const { minLikes = 3, onProgress, signal, baseUrl } = options
   const videoId = extractVideoId(urlOrId)
   if (!videoId) {
     return { comments: [], error: 'Invalid YouTube URL or video ID' }
   }
 
+  const resolvedBaseUrl = normalizeBaseUrl(baseUrl ?? DEFAULT_YOUTUBE_URL)
+
   try {
-    const html = await fetchPage(videoId)
+    const html = await fetchPage(resolvedBaseUrl, videoId, signal)
     const apiKey = extractApiKey(html)
     const videoTitle = extractVideoTitle(html)
 
@@ -358,11 +393,21 @@ export async function downloadComments(
       }
     }
 
-    const comments = await fetchComments(apiKey, initialEndpoint, minLikes, onProgress)
+    const comments = await fetchComments(
+      resolvedBaseUrl,
+      apiKey,
+      initialEndpoint,
+      minLikes,
+      onProgress,
+      signal,
+    )
     const sorted = comments.sort((a, b) => b.votes - a.votes)
 
     return { comments: sorted, videoTitle: videoTitle ?? undefined }
   } catch (err) {
+    if (isAbortError(err)) {
+      return { comments: [], error: CANCELLED_ERROR_MESSAGE }
+    }
     const message = err instanceof Error ? err.message : 'Unknown error'
     return { comments: [], error: message }
   }
@@ -379,6 +424,7 @@ export function commentsToCSV(comments: readonly Comment[]): string {
 }
 
 export {
+  CANCELLED_ERROR_MESSAGE,
   extractVideoId,
   parseVoteCount,
   decodeHtmlEntities,

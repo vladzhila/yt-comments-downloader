@@ -9,8 +9,139 @@ import {
   parseCommentsFromMutations,
   extractApiKey,
   extractVideoTitle,
+  CANCELLED_ERROR_MESSAGE,
 } from './youtube.ts'
 import type { Comment, Mutation } from './youtube.ts'
+
+const API_KEY = 'test-api-key'
+const VIDEO_OK = 'vid12345678'
+const VIDEO_NO_KEY = 'vid12345679'
+const VIDEO_NO_CONTINUATION = 'vid12345670'
+const VIDEO_FALLBACK = 'vid12345671'
+const VIDEO_WATCH_ERROR = 'vid12345672'
+const VIDEO_ABORT = 'vid12345673'
+const VIDEO_INVALID_JSON = 'vid12345674'
+const VIDEO_COMMENTS_ERROR = 'vid12345675'
+const ROOT_TOKEN = 'root-token'
+const NEXT_TOKEN = 'next-token'
+const REPLY_TOKEN_BUTTON = 'reply-token-button'
+const REPLY_TOKEN_DIRECT = 'reply-token-direct'
+const FALLBACK_TOKEN = 'fallback-token'
+const TITLE_ENCODED = 'Hello &amp; World'
+
+type MutationOptions = {
+  id: string
+  text?: string
+  author?: string
+  likes?: string
+  time?: string
+  replyLevel?: number
+}
+
+function createMutation(options: MutationOptions): Mutation {
+  const {
+    id,
+    text = 'Test comment',
+    author = 'TestUser',
+    likes = '0',
+    time = '1 day ago',
+    replyLevel = 0,
+  } = options
+
+  return {
+    payload: {
+      commentEntityPayload: {
+        key: `comment-${id}`,
+        properties: {
+          commentId: id,
+          content: { content: text },
+          publishedTime: time,
+          replyLevel,
+        },
+        author: { displayName: author },
+        toolbar: { likeCountNotliked: likes },
+      },
+    },
+  }
+}
+
+function createInitialHtml(options: {
+  apiKey?: string
+  title?: string
+  initialData: Record<string, unknown>
+}): string {
+  const { apiKey, title, initialData } = options
+  const titleTag = title ? `<meta property="og:title" content="${title}">` : ''
+  const apiKeySnippet = apiKey ? `"INNERTUBE_API_KEY":"${apiKey}"` : ''
+  const data = JSON.stringify(initialData)
+  return `<html><head>${titleTag}</head><body><script>var ytInitialData = ${data};</script>${apiKeySnippet}</body></html>`
+}
+
+function createSortMenuData(tokens: string[]): Record<string, unknown> {
+  return {
+    sortFilterSubMenuRenderer: {
+      subMenuItems: tokens.map((token) => ({
+        serviceEndpoint: {
+          continuationCommand: { token },
+        },
+      })),
+    },
+  }
+}
+
+function createContinuationData(token: string): Record<string, unknown> {
+  return {
+    continuationEndpoint: {
+      continuationCommand: { token },
+    },
+  }
+}
+
+function startStubServer(options: {
+  htmlByVideoId: Record<string, string>
+  responsesByToken: Record<string, unknown>
+  apiKey: string
+  watchStatusByVideoId?: Record<string, number>
+  nextStatusByToken?: Record<string, number>
+}) {
+  const { htmlByVideoId, responsesByToken, apiKey, watchStatusByVideoId, nextStatusByToken } =
+    options
+  const server = Bun.serve({
+    port: 0,
+    routes: {
+      '/watch': {
+        GET(req) {
+          const url = new URL(req.url)
+          const videoId = url.searchParams.get('v') ?? ''
+          const status = watchStatusByVideoId?.[videoId]
+          if (status) return new Response('error', { status })
+          const html = htmlByVideoId[videoId]
+          if (!html) return new Response('not found', { status: 404 })
+          return new Response(html, { headers: { 'Content-Type': 'text/html' } })
+        },
+      },
+      '/youtubei/v1/next': {
+        async POST(req) {
+          const url = new URL(req.url)
+          const key = url.searchParams.get('key')
+          if (key !== apiKey) return new Response('invalid key', { status: 403 })
+          const body = (await req.json()) as { continuation?: string }
+          const token = body.continuation ?? ''
+          const status = nextStatusByToken?.[token]
+          if (status) return new Response('error', { status })
+          const payload = responsesByToken[token]
+          if (!payload) return new Response('unknown token', { status: 404 })
+          return Response.json(payload)
+        },
+      },
+    },
+  })
+
+  return {
+    server,
+    baseUrl: `http://localhost:${server.port}`,
+  }
+}
 
 test('extractVideoId handles direct video ID', () => {
   expect(extractVideoId('dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ')
@@ -93,6 +224,269 @@ describe('downloadComments', () => {
   test('returns error for random URL', async () => {
     const result = await downloadComments('https://example.com/foo')
     expect(result.error).toBe('Invalid YouTube URL or video ID')
+    expect(result.comments).toEqual([])
+  })
+
+  test('downloads and sorts comments from stub server', async () => {
+    const initialData = createSortMenuData(['unused-token', ROOT_TOKEN])
+    const html = createInitialHtml({
+      apiKey: API_KEY,
+      title: TITLE_ENCODED,
+      initialData,
+    })
+    const responsesByToken = {
+      [ROOT_TOKEN]: {
+        frameworkUpdates: {
+          entityBatchUpdate: {
+            mutations: [
+              createMutation({ id: 'c1', likes: '2' }),
+              createMutation({ id: 'c2', likes: '5' }),
+            ],
+          },
+        },
+        onResponseReceivedEndpoints: [
+          {
+            appendContinuationItemsAction: {
+              targetId: 'comments-section',
+              continuationItems: [
+                {
+                  continuationEndpoint: {
+                    continuationCommand: { token: NEXT_TOKEN },
+                  },
+                },
+              ],
+            },
+          },
+          {
+            appendContinuationItemsAction: {
+              targetId: 'comment-replies-item-1',
+              continuationItems: [
+                {
+                  continuationItemRenderer: { dummy: true },
+                  buttonRenderer: {
+                    command: {
+                      continuationCommand: { token: REPLY_TOKEN_BUTTON },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+          {
+            reloadContinuationItemsCommand: {
+              targetId: 'comment-replies-item-2',
+              continuationItems: [
+                {
+                  continuationEndpoint: {
+                    continuationCommand: { token: REPLY_TOKEN_DIRECT },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+      [NEXT_TOKEN]: {
+        frameworkUpdates: {
+          entityBatchUpdate: {
+            mutations: [createMutation({ id: 'c3', likes: '10' })],
+          },
+        },
+      },
+      [REPLY_TOKEN_BUTTON]: {
+        frameworkUpdates: {
+          entityBatchUpdate: {
+            mutations: [createMutation({ id: 'r1', likes: '7', replyLevel: 1 })],
+          },
+        },
+      },
+      [REPLY_TOKEN_DIRECT]: {
+        frameworkUpdates: {
+          entityBatchUpdate: {
+            mutations: [createMutation({ id: 'r2', likes: '3', replyLevel: 2 })],
+          },
+        },
+      },
+    }
+    const { server, baseUrl } = startStubServer({
+      htmlByVideoId: { [VIDEO_OK]: html },
+      responsesByToken,
+      apiKey: API_KEY,
+    })
+    const progress: Array<{ processed: number; filtered: number }> = []
+
+    try {
+      const result = await downloadComments(VIDEO_OK, {
+        minLikes: 3,
+        baseUrl: `${baseUrl}/`,
+        onProgress(processed, filtered) {
+          progress.push({ processed, filtered })
+        },
+      })
+
+      expect(result.error).toBeUndefined()
+      expect(result.videoTitle).toBe('Hello & World')
+      expect(result.comments.map((comment) => comment.cid)).toEqual(['c3', 'r1', 'c2', 'r2'])
+      expect(result.comments.find((comment) => comment.cid === 'r1')?.parent).toBe('reply')
+      expect(progress.length).toBeGreaterThan(0)
+      const last = progress[progress.length - 1]
+      expect(last).toEqual({ processed: 5, filtered: 4 })
+    } finally {
+      server.stop(true)
+    }
+  })
+
+  test('aborts when signal is cancelled during progress', async () => {
+    const controller = new AbortController()
+    const initialData = createSortMenuData([ROOT_TOKEN])
+    const html = createInitialHtml({ apiKey: API_KEY, title: TITLE_ENCODED, initialData })
+    const responsesByToken = {
+      [ROOT_TOKEN]: {
+        frameworkUpdates: {
+          entityBatchUpdate: {
+            mutations: [createMutation({ id: 'c5', likes: '1' })],
+          },
+        },
+      },
+    }
+    const { server, baseUrl } = startStubServer({
+      htmlByVideoId: { [VIDEO_ABORT]: html },
+      responsesByToken,
+      apiKey: API_KEY,
+    })
+
+    try {
+      const result = await downloadComments(VIDEO_ABORT, {
+        baseUrl,
+        signal: controller.signal,
+        onProgress() {
+          controller.abort()
+        },
+      })
+      expect(result.error).toBe(CANCELLED_ERROR_MESSAGE)
+      expect(result.comments).toEqual([])
+    } finally {
+      server.stop(true)
+    }
+  })
+
+  test('falls back to continuationEndpoint when sort menu missing', async () => {
+    const initialData = createContinuationData(FALLBACK_TOKEN)
+    const html = createInitialHtml({ apiKey: API_KEY, title: TITLE_ENCODED, initialData })
+    const responsesByToken = {
+      [FALLBACK_TOKEN]: {
+        frameworkUpdates: {
+          entityBatchUpdate: {
+            mutations: [createMutation({ id: 'c4', likes: '1' })],
+          },
+        },
+      },
+    }
+    const { server, baseUrl } = startStubServer({
+      htmlByVideoId: { [VIDEO_FALLBACK]: html },
+      responsesByToken,
+      apiKey: API_KEY,
+    })
+
+    try {
+      const result = await downloadComments(VIDEO_FALLBACK, { minLikes: 0, baseUrl })
+      expect(result.error).toBeUndefined()
+      expect(result.comments).toHaveLength(1)
+      expect(result.comments[0]?.cid).toBe('c4')
+    } finally {
+      server.stop(true)
+    }
+  })
+
+  test('returns error when API key missing', async () => {
+    const initialData = createSortMenuData([ROOT_TOKEN])
+    const html = createInitialHtml({ title: TITLE_ENCODED, initialData })
+    const { server, baseUrl } = startStubServer({
+      htmlByVideoId: { [VIDEO_NO_KEY]: html },
+      responsesByToken: {},
+      apiKey: API_KEY,
+    })
+
+    try {
+      const result = await downloadComments(VIDEO_NO_KEY, { baseUrl })
+      expect(result.error).toBe('Could not extract YouTube data. Video may be unavailable.')
+    } finally {
+      server.stop(true)
+    }
+  })
+
+  test('returns error when ytInitialData is invalid', async () => {
+    const html = `<html><body><script>var ytInitialData = {broken};</script>"INNERTUBE_API_KEY":"${API_KEY}"</body></html>`
+    const { server, baseUrl } = startStubServer({
+      htmlByVideoId: { [VIDEO_INVALID_JSON]: html },
+      responsesByToken: {},
+      apiKey: API_KEY,
+    })
+
+    try {
+      const result = await downloadComments(VIDEO_INVALID_JSON, { baseUrl })
+      expect(result.error).toBe('Could not find comments section. Comments may be disabled.')
+    } finally {
+      server.stop(true)
+    }
+  })
+
+  test('returns error when comments section missing', async () => {
+    const initialData = { foo: 'bar' }
+    const html = createInitialHtml({ apiKey: API_KEY, title: TITLE_ENCODED, initialData })
+    const { server, baseUrl } = startStubServer({
+      htmlByVideoId: { [VIDEO_NO_CONTINUATION]: html },
+      responsesByToken: {},
+      apiKey: API_KEY,
+    })
+
+    try {
+      const result = await downloadComments(VIDEO_NO_CONTINUATION, { baseUrl })
+      expect(result.error).toBe('Could not find comments section. Comments may be disabled.')
+    } finally {
+      server.stop(true)
+    }
+  })
+
+  test('returns error when watch page fails', async () => {
+    const { server, baseUrl } = startStubServer({
+      htmlByVideoId: {},
+      responsesByToken: {},
+      apiKey: API_KEY,
+      watchStatusByVideoId: { [VIDEO_WATCH_ERROR]: 500 },
+    })
+
+    try {
+      const result = await downloadComments(VIDEO_WATCH_ERROR, { baseUrl })
+      expect(result.error).toBe('Failed to fetch video page: 500')
+    } finally {
+      server.stop(true)
+    }
+  })
+
+  test('returns error when comment fetch fails', async () => {
+    const initialData = createSortMenuData([ROOT_TOKEN])
+    const html = createInitialHtml({ apiKey: API_KEY, title: TITLE_ENCODED, initialData })
+    const { server, baseUrl } = startStubServer({
+      htmlByVideoId: { [VIDEO_COMMENTS_ERROR]: html },
+      responsesByToken: {},
+      apiKey: API_KEY,
+      nextStatusByToken: { [ROOT_TOKEN]: 500 },
+    })
+
+    try {
+      const result = await downloadComments(VIDEO_COMMENTS_ERROR, { baseUrl })
+      expect(result.error).toBe('Failed to fetch comments: 500')
+    } finally {
+      server.stop(true)
+    }
+  })
+
+  test('returns cancellation error when aborted', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const result = await downloadComments('dQw4w9WgXcQ', { signal: controller.signal })
+    expect(result.error).toBe(CANCELLED_ERROR_MESSAGE)
     expect(result.comments).toEqual([])
   })
 })
