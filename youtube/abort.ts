@@ -1,18 +1,10 @@
-import { ABORT_ERROR_NAME, CANCELLED_ERROR_MESSAGE } from './constants.ts'
+import { CANCELLED_ERROR_MESSAGE } from './constants.ts'
+import { err, ok } from './result.ts'
+import type { Result } from './result.ts'
 
-function createAbortError(): Error {
-  const err = new Error(CANCELLED_ERROR_MESSAGE)
-  err.name = ABORT_ERROR_NAME
-  return err
+function abortIfNeeded(signal?: AbortSignal): Result<void> {
+  if (!signal?.aborted) return ok(undefined)
+  return err(CANCELLED_ERROR_MESSAGE)
 }
 
-function abortIfNeeded(signal?: AbortSignal): void {
-  if (!signal?.aborted) return
-  throw createAbortError()
-}
-
-function isAbortError(err: unknown): boolean {
-  return err instanceof Error && err.name === ABORT_ERROR_NAME
-}
-
-export { abortIfNeeded, isAbortError }
+export { abortIfNeeded }

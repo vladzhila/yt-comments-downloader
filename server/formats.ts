@@ -1,5 +1,5 @@
 import { commentsToCSV, commentsToJSON, commentsToMarkdown, commentsToXlsx } from '../youtube.ts'
-import type { Comment } from '../youtube.ts'
+import type { Comment, VideoId } from '../youtube/types.ts'
 import {
   DEFAULT_DOWNLOAD_FORMAT,
   FALLBACK_FILENAME_PREFIX,
@@ -53,7 +53,7 @@ function sanitizeFilename(name: string): string {
 
 function buildDownloadFilename(
   videoTitle: string | undefined,
-  videoId: string,
+  videoId: VideoId,
   format: DownloadFormat,
 ): string {
   const baseName = videoTitle

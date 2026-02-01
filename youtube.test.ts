@@ -14,7 +14,10 @@ import {
   extractVideoTitle,
   CANCELLED_ERROR_MESSAGE,
 } from './youtube.ts'
+import { findInitialContinuation } from './youtube/html.ts'
 import type { Comment, Mutation } from './youtube.ts'
+import { REPLY_PARENT_MARKER } from './youtube/constants.ts'
+import { asCommentId, asVideoId } from './youtube/ids.ts'
 import * as XLSX from 'xlsx'
 
 const API_KEY = 'test-api-key'
@@ -32,6 +35,8 @@ const REPLY_TOKEN_BUTTON = 'reply-token-button'
 const REPLY_TOKEN_DIRECT = 'reply-token-direct'
 const FALLBACK_TOKEN = 'fallback-token'
 const TITLE_ENCODED = 'Hello &amp; World'
+const VIDEO_ID = asVideoId('dQw4w9WgXcQ')
+const FIRST_COMMENT_ERROR = 'Expected comment to exist'
 
 type MutationOptions = {
   id: string
@@ -101,6 +106,12 @@ function createContinuationData(token: string): Record<string, unknown> {
   }
 }
 
+function getFirst<T>(items: readonly T[], errorMessage: string): T {
+  const [first] = items
+  if (first) return first
+  throw new Error(errorMessage)
+}
+
 function startStubServer(options: {
   htmlByVideoId: Record<string, string>
   responsesByToken: Record<string, unknown>
@@ -148,23 +159,23 @@ function startStubServer(options: {
 }
 
 test('extractVideoId handles direct video ID', () => {
-  expect(extractVideoId('dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ')
+  expect(extractVideoId('dQw4w9WgXcQ')).toBe(VIDEO_ID)
 })
 
 test('extractVideoId handles standard watch URL', () => {
-  expect(extractVideoId('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ')
+  expect(extractVideoId('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe(VIDEO_ID)
 })
 
 test('extractVideoId handles short URL', () => {
-  expect(extractVideoId('https://youtu.be/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ')
+  expect(extractVideoId('https://youtu.be/dQw4w9WgXcQ')).toBe(VIDEO_ID)
 })
 
 test('extractVideoId handles embed URL', () => {
-  expect(extractVideoId('https://youtube.com/embed/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ')
+  expect(extractVideoId('https://youtube.com/embed/dQw4w9WgXcQ')).toBe(VIDEO_ID)
 })
 
 test('extractVideoId handles shorts URL', () => {
-  expect(extractVideoId('https://youtube.com/shorts/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ')
+  expect(extractVideoId('https://youtube.com/shorts/dQw4w9WgXcQ')).toBe(VIDEO_ID)
 })
 
 test('extractVideoId returns null for invalid input', () => {
@@ -172,22 +183,30 @@ test('extractVideoId returns null for invalid input', () => {
   expect(extractVideoId('https://example.com')).toBe(null)
 })
 
+test('findInitialContinuation uses first menu item when only one exists', () => {
+  const initialData = createSortMenuData([ROOT_TOKEN])
+  const html = createInitialHtml({ apiKey: API_KEY, title: TITLE_ENCODED, initialData })
+  const endpoint = findInitialContinuation(html)
+
+  expect(endpoint?.continuationCommand?.token).toBe(ROOT_TOKEN)
+})
+
 test('commentsToCSV generates valid CSV', () => {
   const comments: Comment[] = [
     {
-      cid: 'abc123',
+      cid: asCommentId('abc123'),
       text: 'Great video!',
       author: 'User1',
       votes: 100,
       time: '1 day ago',
     },
     {
-      cid: 'def456',
+      cid: asCommentId('def456'),
       text: 'Test "quotes"',
       author: 'User2',
       votes: 50,
       time: '2 days ago',
-      parent: 'abc123',
+      parent: REPLY_PARENT_MARKER,
     },
   ]
 
@@ -196,7 +215,7 @@ test('commentsToCSV generates valid CSV', () => {
 
   expect(lines[0]).toBe('published_time,author,likes,comment_id,parent_id,comment')
   expect(lines[1]).toBe('"1 day ago","User1",100,"abc123","","Great video!"')
-  expect(lines[2]).toBe('"2 days ago","User2",50,"def456","abc123","Test ""quotes"""')
+  expect(lines[2]).toBe('"2 days ago","User2",50,"def456","reply","Test ""quotes"""')
 })
 
 test('commentsToCSV handles empty array', () => {
@@ -207,7 +226,7 @@ test('commentsToCSV handles empty array', () => {
 test('commentsToCSV escapes quotes in author name', () => {
   const comments: Comment[] = [
     {
-      cid: 'abc',
+      cid: asCommentId('abc'),
       text: 'Hello',
       author: 'User "Pro"',
       votes: 10,
@@ -221,19 +240,19 @@ test('commentsToCSV escapes quotes in author name', () => {
 test('commentsToJSON outputs comments array', () => {
   const comments: Comment[] = [
     {
-      cid: 'c1',
+      cid: asCommentId('c1'),
       text: 'Hello',
       author: 'User1',
       votes: 1,
       time: '1 day ago',
     },
     {
-      cid: 'c2',
+      cid: asCommentId('c2'),
       text: 'Reply',
       author: 'User2',
       votes: 2,
       time: '2 days ago',
-      parent: 'reply',
+      parent: REPLY_PARENT_MARKER,
     },
   ]
 
@@ -246,7 +265,7 @@ test('commentsToJSON outputs comments array', () => {
 test('commentsToMarkdown escapes pipes and newlines', () => {
   const comments: Comment[] = [
     {
-      cid: 'c1',
+      cid: asCommentId('c1'),
       text: 'Hello | world\nnext line',
       author: 'User1',
       votes: 1,
@@ -264,19 +283,19 @@ test('commentsToMarkdown escapes pipes and newlines', () => {
 test('commentsToXlsx splits comments and replies', () => {
   const comments: Comment[] = [
     {
-      cid: 'c1',
+      cid: asCommentId('c1'),
       text: 'Top',
       author: 'User1',
       votes: 1,
       time: '1 day ago',
     },
     {
-      cid: 'r1',
+      cid: asCommentId('r1'),
       text: 'Reply',
       author: 'User2',
       votes: 2,
       time: '2 days ago',
-      parent: 'reply',
+      parent: REPLY_PARENT_MARKER,
     },
   ]
 
@@ -405,8 +424,15 @@ describe('downloadComments', () => {
 
       expect(result.error).toBeUndefined()
       expect(result.videoTitle).toBe('Hello & World')
-      expect(result.comments.map((comment) => comment.cid)).toEqual(['c3', 'r1', 'c2', 'r2'])
-      expect(result.comments.find((comment) => comment.cid === 'r1')?.parent).toBe('reply')
+      expect(result.comments.map((comment) => String(comment.cid))).toEqual([
+        'c3',
+        'r1',
+        'c2',
+        'r2',
+      ])
+      expect(result.comments.find((comment) => comment.cid === asCommentId('r1'))?.parent).toBe(
+        REPLY_PARENT_MARKER,
+      )
       expect(progress.length).toBeGreaterThan(0)
       const last = progress[progress.length - 1]
       expect(last).toEqual({ processed: 5, filtered: 4 })
@@ -471,7 +497,7 @@ describe('downloadComments', () => {
       const result = await downloadComments(VIDEO_FALLBACK, { minLikes: 0, baseUrl })
       expect(result.error).toBeUndefined()
       expect(result.comments).toHaveLength(1)
-      expect(result.comments[0]?.cid).toBe('c4')
+      expect(result.comments[0]?.cid).toBe(asCommentId('c4'))
     } finally {
       server.stop(true)
     }
@@ -701,7 +727,7 @@ describe('parseCommentsFromMutations', () => {
 
     expect(comments).toHaveLength(1)
     expect(comments[0]).toEqual({
-      cid: 'cid123',
+      cid: asCommentId('cid123'),
       text: 'Test comment',
       author: 'TestUser',
       votes: 10,
@@ -718,14 +744,16 @@ describe('parseCommentsFromMutations', () => {
     const comments = parseCommentsFromMutations(mutations, 10)
 
     expect(comments).toHaveLength(1)
-    expect(comments[0]!.cid).toBe('cid2')
+    const comment = getFirst(comments, FIRST_COMMENT_ERROR)
+    expect(comment.cid).toBe(asCommentId('cid2'))
   })
 
   test('marks replies with parent field', () => {
     const mutations = [makeMutation({ replyLevel: 1 })]
     const comments = parseCommentsFromMutations(mutations, 0)
 
-    expect(comments[0]!.parent).toBe('reply')
+    const comment = getFirst(comments, FIRST_COMMENT_ERROR)
+    expect(comment.parent).toBe(REPLY_PARENT_MARKER)
   })
 
   test('skips mutations without payload', () => {
@@ -767,7 +795,8 @@ describe('parseCommentsFromMutations', () => {
     ]
     const comments = parseCommentsFromMutations(mutations, 0)
 
-    expect(comments[0]!.author).toBe('Unknown')
+    const comment = getFirst(comments, FIRST_COMMENT_ERROR)
+    expect(comment.author).toBe('Unknown')
   })
 })
 

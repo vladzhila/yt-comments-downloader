@@ -1,5 +1,5 @@
-import { CANCELLED_ERROR_MESSAGE, DEFAULT_YOUTUBE_URL } from './constants.ts'
-import { isAbortError } from './abort.ts'
+import { DEFAULT_YOUTUBE_URL } from './constants.ts'
+import { abortIfNeeded } from './abort.ts'
 import { fetchComments, fetchPage } from './fetch.ts'
 import {
   extractApiKey,
@@ -31,6 +31,11 @@ async function downloadComments(
   options: DownloadOptions = {},
 ): Promise<CommentResult> {
   const { minLikes = DEFAULT_MIN_LIKES, onProgress, signal, baseUrl } = options
+  const abortResult = abortIfNeeded(signal)
+  if (!abortResult.ok) {
+    return { comments: [], error: abortResult.error }
+  }
+
   const videoId = extractVideoId(urlOrId)
   if (!videoId) {
     return { comments: [], error: ERROR_INVALID_URL }
@@ -38,44 +43,45 @@ async function downloadComments(
 
   const resolvedBaseUrl = normalizeBaseUrl(baseUrl ?? DEFAULT_YOUTUBE_URL)
 
-  try {
-    const html = await fetchPage(resolvedBaseUrl, videoId, signal)
-    const apiKey = extractApiKey(html)
-    const videoTitle = extractVideoTitle(html)
-
-    if (!apiKey) {
-      return {
-        comments: [],
-        error: ERROR_NO_API_KEY,
-      }
-    }
-
-    const initialEndpoint = findInitialContinuation(html)
-    if (!initialEndpoint) {
-      return {
-        comments: [],
-        error: ERROR_NO_COMMENTS,
-      }
-    }
-
-    const comments = await fetchComments(
-      resolvedBaseUrl,
-      apiKey,
-      initialEndpoint,
-      minLikes,
-      onProgress,
-      signal,
-    )
-    const sorted = comments.sort((a, b) => b.votes - a.votes)
-
-    return { comments: sorted, videoTitle: videoTitle ?? undefined }
-  } catch (err) {
-    if (isAbortError(err)) {
-      return { comments: [], error: CANCELLED_ERROR_MESSAGE }
-    }
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return { comments: [], error: message }
+  const pageResult = await fetchPage(resolvedBaseUrl, videoId, signal)
+  if (!pageResult.ok) {
+    return { comments: [], error: pageResult.error }
   }
+
+  const html = pageResult.value
+  const apiKey = extractApiKey(html)
+  const videoTitle = extractVideoTitle(html)
+
+  if (!apiKey) {
+    return {
+      comments: [],
+      error: ERROR_NO_API_KEY,
+    }
+  }
+
+  const initialEndpoint = findInitialContinuation(html)
+  if (!initialEndpoint) {
+    return {
+      comments: [],
+      error: ERROR_NO_COMMENTS,
+    }
+  }
+
+  const commentsResult = await fetchComments(
+    resolvedBaseUrl,
+    apiKey,
+    initialEndpoint,
+    minLikes,
+    onProgress,
+    signal,
+  )
+  if (!commentsResult.ok) {
+    return { comments: [], error: commentsResult.error }
+  }
+
+  const sorted = commentsResult.value.sort((a, b) => b.votes - a.votes)
+
+  return { comments: sorted, videoTitle: videoTitle ?? undefined }
 }
 
 export { downloadComments }

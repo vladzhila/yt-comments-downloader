@@ -29,6 +29,7 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "^4.3.6"
   }
 }

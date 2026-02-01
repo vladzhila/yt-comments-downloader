@@ -1,3 +1,5 @@
+import { REPLY_PARENT_MARKER } from './constants.ts'
+import { asCommentId } from './ids.ts'
 import type { Comment, Mutation } from './types.ts'
 
 function* searchDict(obj: unknown, searchKey: string): Generator<unknown> {
@@ -43,12 +45,12 @@ function parseCommentsFromMutations(mutations: Mutation[], minLikes: number): Co
     if (votes < minLikes) continue
 
     comments.push({
-      cid: props.commentId,
+      cid: asCommentId(props.commentId),
       text: props.content.content,
       author: payload.author?.displayName ?? 'Unknown',
       votes,
       time: props.publishedTime ?? '',
-      parent: props.replyLevel && props.replyLevel > 0 ? 'reply' : undefined,
+      parent: props.replyLevel && props.replyLevel > 0 ? REPLY_PARENT_MARKER : undefined,
     })
   }
 

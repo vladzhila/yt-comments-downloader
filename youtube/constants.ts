@@ -5,8 +5,9 @@ const DEFAULT_YOUTUBE_URL = 'https://www.youtube.com'
 const WATCH_PATH = '/watch'
 const NEXT_PATH = '/youtubei/v1/next'
 const CONTINUATION_DELAY_MS = 100
-const ABORT_ERROR_NAME = 'AbortError'
 const CANCELLED_ERROR_MESSAGE = 'Request cancelled'
+const REPLY_PARENT_MARKER = 'reply'
+const UNKNOWN_ERROR_MESSAGE = 'Unknown error'
 const CLIENT_NAME = 'WEB'
 const CLIENT_VERSION = '2.20231219.04.00'
 const ACCEPT_LANGUAGE = 'en-US,en;q=0.9'
@@ -36,8 +37,9 @@ export {
   WATCH_PATH,
   NEXT_PATH,
   CONTINUATION_DELAY_MS,
-  ABORT_ERROR_NAME,
   CANCELLED_ERROR_MESSAGE,
+  REPLY_PARENT_MARKER,
+  UNKNOWN_ERROR_MESSAGE,
   CLIENT_NAME,
   CLIENT_VERSION,
   ACCEPT_LANGUAGE,

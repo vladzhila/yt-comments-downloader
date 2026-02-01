@@ -14,8 +14,8 @@ test('dark theme styles are defined', async () => {
 
 test('minLikes default is 0 in API params', async () => {
   const source = await Bun.file(new URL('./server/params.ts', import.meta.url)).text()
-  const matches = source.match(/minLikes'\)\s*\?\?\s*'0'/g) ?? []
-  expect(matches).toHaveLength(1)
+  expect(source).toContain('const DEFAULT_MIN_LIKES = 0')
+  expect(source).toContain('String(DEFAULT_MIN_LIKES)')
 })
 
 test('minLikes is persisted in localStorage', async () => {

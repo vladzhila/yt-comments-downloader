@@ -1,10 +1,16 @@
+type Brand<T, B extends string> = T & { readonly __brand: B }
+
+type VideoId = Brand<string, 'VideoId'>
+type CommentId = Brand<string, 'CommentId'>
+type ReplyMarker = 'reply'
+
 interface Comment {
-  cid: string
+  cid: CommentId
   text: string
   author: string
   votes: number
   time: string
-  parent?: string
+  parent?: ReplyMarker
 }
 
 interface CommentResult {
@@ -73,6 +79,9 @@ interface SortFilterSubMenuRenderer {
 }
 
 export type {
+  VideoId,
+  CommentId,
+  ReplyMarker,
   Comment,
   CommentResult,
   CommentEntityPayload,

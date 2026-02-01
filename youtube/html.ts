@@ -1,4 +1,5 @@
-import type { ContinuationEndpoint, SortFilterSubMenuRenderer } from './types.ts'
+import { asVideoId } from './ids.ts'
+import type { ContinuationEndpoint, SortFilterSubMenuRenderer, VideoId } from './types.ts'
 import { searchDict } from './parse.ts'
 
 const VIDEO_ID_PATTERNS = [
@@ -13,15 +14,16 @@ const OG_TITLE_PATTERN = /<meta property="og:title" content="([^"]+)"/
 const TITLE_TAG_PATTERN = /<title>([^<]+)<\/title>/
 const TITLE_SUFFIX_PATTERN = / - YouTube$/
 const API_KEY_PATTERN = /"INNERTUBE_API_KEY":"([^"]+)"/
+const VIDEO_ID_LENGTH = 11
 
-function extractVideoId(urlOrId: string): string | null {
-  if (urlOrId.length === 11 && !urlOrId.includes('/')) {
-    return urlOrId
+function extractVideoId(urlOrId: string): VideoId | null {
+  if (urlOrId.length === VIDEO_ID_LENGTH && !urlOrId.includes('/')) {
+    return asVideoId(urlOrId)
   }
 
   for (const pattern of VIDEO_ID_PATTERNS) {
     const match = urlOrId.match(pattern)
-    if (match?.[1]) return match[1]
+    if (match?.[1]) return asVideoId(match[1])
   }
 
   return null

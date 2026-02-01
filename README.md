@@ -37,6 +37,12 @@ Server-Sent Events stream for downloading comments.
 | minLikes | Minimum likes filter (default: 0)  |
 | format   | csv, json, xlsx, md (default: csv) |
 
+Query validation:
+
+- `url` is required
+- `minLikes` must be a non-negative integer
+- invalid params return `400` with a JSON error message
+
 `complete` event payload:
 
 | Field    | Description                              |
