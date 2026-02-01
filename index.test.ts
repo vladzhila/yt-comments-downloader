@@ -9,7 +9,7 @@ test('dark theme styles are defined', async () => {
   const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
   expect(html).toContain('color-scheme: light dark')
   expect(html).toContain('@media (prefers-color-scheme: dark)')
-  expect(html).toContain('--bg: #0f1115')
+  expect(html).toContain('--bg: #0f1112')
 })
 
 test('minLikes default is 0 in API params', async () => {
