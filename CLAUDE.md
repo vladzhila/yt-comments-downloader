@@ -11,10 +11,14 @@ Web interface for downloading YouTube comments as CSV.
 ## Commands
 
 ```bash
-bun run dev      # Start with hot reload
-bun run start    # Production start
-bun test         # Run tests
-bun run typecheck # TypeScript check
+bun run dev           # Start with hot reload
+bun run start         # Production start
+bun test              # Run tests
+bun run test:coverage # Run tests with coverage
+bun run typecheck     # TypeScript check
+bun run lint          # ESLint check
+bun run format        # Prettier format
+bun run check         # Lint + test in parallel
 ```
 
 ## Key Files
