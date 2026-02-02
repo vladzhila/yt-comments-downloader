@@ -115,6 +115,8 @@
           'Outfit',
           -apple-system,
           sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
         background:
           radial-gradient(1200px circle at 10% -10%, var(--bg-accent) 0%, transparent 60%),
           radial-gradient(900px circle at 110% 0%, var(--bg-accent-strong) 0%, transparent 55%),
@@ -132,10 +134,15 @@
           color 0.3s ease;
       }
 
+      .no-transition,
+      .no-transition * {
+        transition: none;
+      }
+
       .container {
         width: 100%;
         max-width: 560px;
-        animation: fadeUp 0.6s ease-out;
+        animation: fadeUp 0.6s cubic-bezier(0.23, 1, 0.32, 1);
       }
 
       .header {
@@ -156,6 +163,14 @@
           opacity: 1;
           transform: translateY(0);
         }
+      }
+
+      .url-input,
+      .number-input,
+      .select-input,
+      .submit-btn,
+      .theme-pill {
+        touch-action: manipulation;
       }
 
       .logo {
@@ -205,6 +220,7 @@
         font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.2rem);
         font-weight: 600;
         letter-spacing: -0.02em;
+        text-wrap: balance;
       }
 
       .subtitle {
@@ -440,7 +456,7 @@
       }
 
       .submit-btn:active:not(:disabled) {
-        transform: scale(0.98);
+        transform: scale(0.97);
       }
 
       .submit-btn:disabled {
@@ -554,10 +570,10 @@
         *,
         *::before,
         *::after {
-          animation-duration: 0.01ms !important;
-          animation-iteration-count: 1 !important;
-          transition-duration: 0.01ms !important;
-          scroll-behavior: auto !important;
+          animation-duration: 0.01ms;
+          animation-iteration-count: 1;
+          transition-duration: 0.01ms;
+          scroll-behavior: auto;
         }
       }
 
@@ -633,12 +649,14 @@
         <div class="input-wrapper">
           <label class="input-label" for="url">YouTube Video URL</label>
           <input
-            type="text"
+            type="url"
             id="url"
             class="url-input"
             placeholder="youtube.com/watch?v=..."
             autocomplete="off"
             spellcheck="false"
+            data-lpignore="true"
+            data-1p-ignore
           />
         </div>
 
@@ -729,12 +747,19 @@
         downloadBtn.disabled = downloadState.active || !urlInput.value.trim()
       }
 
-      function applyTheme(theme) {
+      function applyTheme(theme, skipTransition = false) {
+        if (skipTransition) document.body.classList.add('no-transition')
+
         if (theme === 'system') {
           document.documentElement.removeAttribute('data-theme')
-          return
+        } else {
+          document.documentElement.setAttribute('data-theme', theme)
         }
-        document.documentElement.setAttribute('data-theme', theme)
+
+        if (skipTransition) {
+          document.body.offsetHeight
+          document.body.classList.remove('no-transition')
+        }
       }
 
       function setDownloadActive(active) {
@@ -859,7 +884,7 @@
 
       themeSelect.addEventListener('change', () => {
         localStorage.setItem(THEME_STORAGE_KEY, themeSelect.value)
-        applyTheme(themeSelect.value)
+        applyTheme(themeSelect.value, true)
       })
 
       function openThemePicker() {
