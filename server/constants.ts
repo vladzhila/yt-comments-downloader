@@ -4,7 +4,7 @@ const STREAM_ENCODING_TEXT = 'utf-8'
 const STREAM_ENCODING_BASE64 = 'base64'
 const FORMAT_QUERY_PARAM = 'format'
 const STREAM_IDLE_TIMEOUT_SECONDS = 120
-const SERVER_PORT = 3000
+const SERVER_PORT = Number(process.env.PORT) || 3000
 
 export {
   DEFAULT_DOWNLOAD_FORMAT,

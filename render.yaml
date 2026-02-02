@@ -1,0 +1,10 @@
+services:
+  - type: web
+    runtime: node
+    name: yt-comments-downloader
+    plan: free
+    buildCommand: bun install
+    startCommand: bun run start
+    envVars:
+      - key: BUN_VERSION
+        value: 1.2.20
