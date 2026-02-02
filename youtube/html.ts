@@ -119,8 +119,8 @@ function extractVideoTitle(html: string): string | null {
 
   const titleMatch = html.match(TITLE_TAG_PATTERN)
   if (!titleMatch?.[1]) return null
-  const title = titleMatch[1].replace(TITLE_SUFFIX_PATTERN, '')
-  return decodeHtmlEntities(title)
+  const title = titleMatch[1].replace(TITLE_SUFFIX_PATTERN, '').trim()
+  return title ? decodeHtmlEntities(title) : null
 }
 
 function decodeHtmlEntities(text: string): string {

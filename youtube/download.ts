@@ -68,14 +68,12 @@ async function downloadComments(
 
   const sorted = commentsResult.value.sort((a, b) => b.votes - a.votes)
   const oembedTitle = videoTitle ? null : await fetchOembedTitle(resolvedBaseUrl, videoId, signal)
-  const resolvedTitle = videoTitle ?? oembedTitle ?? undefined
+  const resolvedTitle = videoTitle || oembedTitle || undefined
   if (debugInfo) {
     console.info(`${TITLE_DEBUG_PREFIX} missing_html_title`, {
       videoId,
       baseUrl: resolvedBaseUrl,
       oembedTitleFound: Boolean(oembedTitle),
-      oembedTitle,
-      resolvedTitle,
       ...debugInfo,
     })
   }

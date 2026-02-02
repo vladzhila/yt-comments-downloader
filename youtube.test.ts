@@ -898,6 +898,11 @@ describe('extractVideoTitle', () => {
     const html = '<html><body>No title</body></html>'
     expect(extractVideoTitle(html)).toBe(null)
   })
+
+  test('returns null when title is only YouTube suffix', () => {
+    const html = '<title> - YouTube</title>'
+    expect(extractVideoTitle(html)).toBe(null)
+  })
 })
 
 describe('getTitleDebugInfo', function () {
