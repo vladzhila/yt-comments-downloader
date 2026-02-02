@@ -29,6 +29,7 @@ const VIDEO_WATCH_ERROR = 'vid12345672'
 const VIDEO_ABORT = 'vid12345673'
 const VIDEO_INVALID_JSON = 'vid12345674'
 const VIDEO_COMMENTS_ERROR = 'vid12345675'
+const VIDEO_OEMBED = 'vid12345676'
 const ROOT_TOKEN = 'root-token'
 const NEXT_TOKEN = 'next-token'
 const REPLY_TOKEN_BUTTON = 'reply-token-button'
@@ -118,9 +119,16 @@ function startStubServer(options: {
   apiKey: string
   watchStatusByVideoId?: Record<string, number>
   nextStatusByToken?: Record<string, number>
+  oembedTitleByVideoId?: Record<string, string>
 }) {
-  const { htmlByVideoId, responsesByToken, apiKey, watchStatusByVideoId, nextStatusByToken } =
-    options
+  const {
+    htmlByVideoId,
+    responsesByToken,
+    apiKey,
+    watchStatusByVideoId,
+    nextStatusByToken,
+    oembedTitleByVideoId,
+  } = options
   const server = Bun.serve({
     port: 0,
     routes: {
@@ -147,6 +155,19 @@ function startStubServer(options: {
           const payload = responsesByToken[token]
           if (!payload) return new Response('unknown token', { status: 404 })
           return Response.json(payload)
+        },
+      },
+      '/oembed': {
+        GET(req) {
+          const url = new URL(req.url)
+          const videoUrl = url.searchParams.get('url') ?? ''
+          if (!videoUrl) return new Response('invalid url', { status: 400 })
+          const parsed = new URL(videoUrl)
+          const videoId = parsed.searchParams.get('v') ?? extractVideoId(videoUrl)
+          if (!videoId) return new Response('invalid url', { status: 400 })
+          const title = oembedTitleByVideoId?.[String(videoId)]
+          if (!title) return new Response('not found', { status: 404 })
+          return Response.json({ title })
         },
       },
     },
@@ -436,6 +457,34 @@ describe('downloadComments', () => {
       expect(progress.length).toBeGreaterThan(0)
       const last = progress[progress.length - 1]
       expect(last).toEqual({ processed: 5, filtered: 4 })
+    } finally {
+      server.stop(true)
+    }
+  })
+
+  test('falls back to oembed when title missing', async () => {
+    const initialData = createSortMenuData([ROOT_TOKEN])
+    const html = createInitialHtml({ apiKey: API_KEY, initialData })
+    const responsesByToken = {
+      [ROOT_TOKEN]: {
+        frameworkUpdates: {
+          entityBatchUpdate: {
+            mutations: [createMutation({ id: 'c6', likes: '1' })],
+          },
+        },
+      },
+    }
+    const { server, baseUrl } = startStubServer({
+      htmlByVideoId: { [VIDEO_OEMBED]: html },
+      responsesByToken,
+      apiKey: API_KEY,
+      oembedTitleByVideoId: { [VIDEO_OEMBED]: 'Oembed Title' },
+    })
+
+    try {
+      const result = await downloadComments(VIDEO_OEMBED, { minLikes: 0, baseUrl })
+      expect(result.error).toBeUndefined()
+      expect(result.videoTitle).toBe('Oembed Title')
     } finally {
       server.stop(true)
     }
@@ -816,6 +865,22 @@ describe('extractVideoTitle', () => {
   test('extracts from og:title', () => {
     const html = '<meta property="og:title" content="My Video Title">'
     expect(extractVideoTitle(html)).toBe('My Video Title')
+  })
+
+  test('extracts from meta itemprop name', () => {
+    const html = '<meta itemprop="name" content="Itemprop Title">'
+    expect(extractVideoTitle(html)).toBe('Itemprop Title')
+  })
+
+  test('extracts from meta name title', () => {
+    const html = '<meta name="title" content="Meta Title">'
+    expect(extractVideoTitle(html)).toBe('Meta Title')
+  })
+
+  test('extracts from player response', () => {
+    const html =
+      '<script>var ytInitialPlayerResponse = {"videoDetails":{"title":"Player Title"}};</script>'
+    expect(extractVideoTitle(html)).toBe('Player Title')
   })
 
   test('extracts from title tag', () => {

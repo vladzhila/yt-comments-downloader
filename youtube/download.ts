@@ -1,6 +1,6 @@
 import { DEFAULT_YOUTUBE_URL } from './constants.ts'
 import { abortIfNeeded } from './abort.ts'
-import { fetchComments, fetchPage } from './fetch.ts'
+import { fetchComments, fetchOembedTitle, fetchPage } from './fetch.ts'
 import {
   extractApiKey,
   extractVideoId,
@@ -63,7 +63,9 @@ async function downloadComments(
   if (commentsResult.isErr()) return { comments: [], error: commentsResult.error }
 
   const sorted = commentsResult.value.sort((a, b) => b.votes - a.votes)
-  return { comments: sorted, videoTitle: videoTitle ?? undefined }
+  const oembedTitle = videoTitle ? null : await fetchOembedTitle(resolvedBaseUrl, videoId, signal)
+  const resolvedTitle = videoTitle ?? oembedTitle ?? undefined
+  return { comments: sorted, videoTitle: resolvedTitle }
 }
 
 export { downloadComments }

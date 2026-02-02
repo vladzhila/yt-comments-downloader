@@ -4,6 +4,10 @@ const USER_AGENT =
 const DEFAULT_YOUTUBE_URL = 'https://www.youtube.com'
 const WATCH_PATH = '/watch'
 const NEXT_PATH = '/youtubei/v1/next'
+const OEMBED_PATH = '/oembed'
+const OEMBED_URL_PARAM = 'url'
+const OEMBED_FORMAT_PARAM = 'format'
+const OEMBED_FORMAT = 'json'
 const CONTINUATION_DELAY_MS = 100
 const CANCELLED_ERROR_MESSAGE = 'Request cancelled'
 const REPLY_PARENT_MARKER = 'reply'
@@ -36,6 +40,10 @@ export {
   DEFAULT_YOUTUBE_URL,
   WATCH_PATH,
   NEXT_PATH,
+  OEMBED_PATH,
+  OEMBED_URL_PARAM,
+  OEMBED_FORMAT_PARAM,
+  OEMBED_FORMAT,
   CONTINUATION_DELAY_MS,
   CANCELLED_ERROR_MESSAGE,
   REPLY_PARENT_MARKER,

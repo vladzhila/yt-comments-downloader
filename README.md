@@ -53,6 +53,8 @@ Query validation:
 | filename | Suggested filename for download          |
 | mimeType | MIME type for the selected export format |
 
+The filename uses the video title when available and falls back to `yt_<videoId>`.
+
 ## Development
 
 ```bash

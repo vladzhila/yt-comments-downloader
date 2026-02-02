@@ -6,6 +6,10 @@ import {
   COMMENT_SECTION_IDS,
   CONTINUATION_DELAY_MS,
   NEXT_PATH,
+  OEMBED_PATH,
+  OEMBED_URL_PARAM,
+  OEMBED_FORMAT_PARAM,
+  OEMBED_FORMAT,
   CANCELLED_ERROR_MESSAGE,
   UNKNOWN_ERROR_MESSAGE,
   USER_AGENT,
@@ -53,6 +57,33 @@ function fetchPage(
       ? ResultAsync.fromPromise(response.text(), () => 'Failed to read response')
       : errAsync(`Failed to fetch video page: ${response.status}`),
   )
+}
+
+async function fetchOembedTitle(
+  baseUrl: string,
+  videoId: VideoId,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const watchUrl = `${baseUrl}${WATCH_PATH}?v=${videoId}`
+  const oembedUrl = `${baseUrl}${OEMBED_PATH}?${OEMBED_URL_PARAM}=${encodeURIComponent(
+    watchUrl,
+  )}&${OEMBED_FORMAT_PARAM}=${OEMBED_FORMAT}`
+  const responseResult = await safeFetch(oembedUrl, { headers: PAGE_HEADERS, signal })
+  if (responseResult.isErr()) return null
+
+  const response = responseResult.value
+  if (!response.ok) return null
+
+  const dataResult = await ResultAsync.fromPromise(response.json(), () => null)
+  if (dataResult.isErr()) return null
+
+  const data = dataResult.value
+  if (!data || typeof data !== 'object') return null
+
+  const title = (data as { title?: unknown }).title
+  if (typeof title !== 'string') return null
+
+  return title
 }
 
 async function fetchComments(
@@ -149,4 +180,4 @@ async function fetchComments(
   return ok(comments)
 }
 
-export { fetchPage, fetchComments }
+export { fetchPage, fetchComments, fetchOembedTitle }

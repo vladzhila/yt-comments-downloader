@@ -11,7 +11,10 @@ const VIDEO_ID_PATTERNS = [
 ] as const
 
 const INITIAL_DATA_PATTERN = /var ytInitialData = ({.+?});/
+const PLAYER_RESPONSE_PATTERN = /ytInitialPlayerResponse\s*=\s*({.+?});/
 const OG_TITLE_PATTERN = /<meta property="og:title" content="([^"]+)"/
+const META_ITEMPROP_NAME_PATTERN = /<meta itemprop="name" content="([^"]+)"/
+const META_NAME_TITLE_PATTERN = /<meta name="title" content="([^"]+)"/
 const TITLE_TAG_PATTERN = /<title>([^<]+)<\/title>/
 const TITLE_SUFFIX_PATTERN = / - YouTube$/
 const API_KEY_PATTERN = /"INNERTUBE_API_KEY":"([^"]+)"/
@@ -35,17 +38,45 @@ function extractApiKey(html: string): string | null {
   return match?.[1] ?? null
 }
 
+function extractTitleFromMeta(html: string, pattern: RegExp): string | null {
+  const match = html.match(pattern)
+  if (!match?.[1]) return null
+  return decodeHtmlEntities(match[1])
+}
+
+function extractTitleFromPlayerResponse(html: string): string | null {
+  const match = html.match(PLAYER_RESPONSE_PATTERN)
+  if (!match?.[1]) return null
+
+  const data = parseJson(match[1])
+  if (!data || typeof data !== 'object') return null
+
+  const videoDetails = (data as { videoDetails?: unknown }).videoDetails
+  if (!videoDetails || typeof videoDetails !== 'object') return null
+
+  const title = (videoDetails as { title?: unknown }).title
+  if (typeof title !== 'string') return null
+
+  return decodeHtmlEntities(title)
+}
+
 function extractVideoTitle(html: string): string | null {
-  const ogMatch = html.match(OG_TITLE_PATTERN)
-  if (ogMatch?.[1]) return decodeHtmlEntities(ogMatch[1])
+  const ogTitle = extractTitleFromMeta(html, OG_TITLE_PATTERN)
+  if (ogTitle) return ogTitle
+
+  const itempropTitle = extractTitleFromMeta(html, META_ITEMPROP_NAME_PATTERN)
+  if (itempropTitle) return itempropTitle
+
+  const metaTitle = extractTitleFromMeta(html, META_NAME_TITLE_PATTERN)
+  if (metaTitle) return metaTitle
+
+  const playerTitle = extractTitleFromPlayerResponse(html)
+  if (playerTitle) return playerTitle
 
   const titleMatch = html.match(TITLE_TAG_PATTERN)
-  if (titleMatch?.[1]) {
-    const title = titleMatch[1].replace(TITLE_SUFFIX_PATTERN, '')
-    return decodeHtmlEntities(title)
-  }
-
-  return null
+  if (!titleMatch?.[1]) return null
+  const title = titleMatch[1].replace(TITLE_SUFFIX_PATTERN, '')
+  return decodeHtmlEntities(title)
 }
 
 function decodeHtmlEntities(text: string): string {
