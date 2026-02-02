@@ -1,3 +1,4 @@
+import { ok, err, ResultAsync, errAsync, type Result } from 'neverthrow'
 import {
   ACCEPT_LANGUAGE,
   CLIENT_NAME,
@@ -12,7 +13,6 @@ import {
 } from './constants.ts'
 import { abortIfNeeded } from './abort.ts'
 import { parseCommentsFromMutations, searchDict } from './parse.ts'
-import { err, ok } from './result.ts'
 import type {
   Comment,
   ContinuationAction,
@@ -20,7 +20,6 @@ import type {
   ContinuationResponse,
   VideoId,
 } from './types.ts'
-import type { Result } from './result.ts'
 
 const REQUEST_HEADERS = {
   'Content-Type': 'application/json',
@@ -37,32 +36,23 @@ function getErrorMessage(error: unknown): string {
   return UNKNOWN_ERROR_MESSAGE
 }
 
-async function safeFetch(url: string, init: RequestInit): Promise<Result<Response>> {
-  return fetch(url, init)
-    .then((response) => ok(response))
-    .catch((error) => {
-      if (init.signal?.aborted) return err(CANCELLED_ERROR_MESSAGE)
-      return err(getErrorMessage(error))
-    })
+function safeFetch(url: string, init: RequestInit): ResultAsync<Response, string> {
+  return ResultAsync.fromPromise(fetch(url, init), (e) =>
+    init.signal?.aborted ? CANCELLED_ERROR_MESSAGE : getErrorMessage(e),
+  )
 }
 
-async function fetchPage(
+function fetchPage(
   baseUrl: string,
   videoId: VideoId,
   signal?: AbortSignal,
-): Promise<Result<string>> {
+): ResultAsync<string, string> {
   const url = `${baseUrl}${WATCH_PATH}?v=${videoId}`
-  const responseResult = await safeFetch(url, {
-    headers: PAGE_HEADERS,
-    signal,
-  })
-
-  if (!responseResult.ok) return responseResult
-
-  const response = responseResult.value
-  if (!response.ok) return err(`Failed to fetch video page: ${response.status}`)
-
-  return ok(await response.text())
+  return safeFetch(url, { headers: PAGE_HEADERS, signal }).andThen((response) =>
+    response.ok
+      ? ResultAsync.fromPromise(response.text(), () => 'Failed to read response')
+      : errAsync(`Failed to fetch video page: ${response.status}`),
+  )
 }
 
 async function fetchComments(
@@ -72,14 +62,14 @@ async function fetchComments(
   minLikes: number,
   onProgress?: (count: number, filtered: number) => void,
   signal?: AbortSignal,
-): Promise<Result<Comment[]>> {
+): Promise<Result<Comment[], string>> {
   const comments: Comment[] = []
   const continuations: ContinuationEndpoint[] = [initialEndpoint]
   const progress = { processed: 0 }
 
   while (continuations.length > 0) {
     const abortResult = abortIfNeeded(signal)
-    if (!abortResult.ok) return abortResult
+    if (abortResult.isErr()) return err(abortResult.error)
 
     const continuation = continuations.pop()
     if (!continuation) continue
@@ -101,7 +91,7 @@ async function fetchComments(
       signal,
     })
 
-    if (!responseResult.ok) return responseResult
+    if (responseResult.isErr()) return err(responseResult.error)
 
     const response = responseResult.value
     if (!response.ok) return err(`Failed to fetch comments: ${response.status}`)
@@ -152,7 +142,7 @@ async function fetchComments(
     }
 
     const abortAfter = abortIfNeeded(signal)
-    if (!abortAfter.ok) return abortAfter
+    if (abortAfter.isErr()) return err(abortAfter.error)
     await new Promise((resolve) => setTimeout(resolve, CONTINUATION_DELAY_MS))
   }
 

@@ -1,3 +1,4 @@
+import { Result } from 'neverthrow'
 import { asVideoId } from './ids.ts'
 import type { ContinuationEndpoint, SortFilterSubMenuRenderer, VideoId } from './types.ts'
 import { searchDict } from './parse.ts'
@@ -58,12 +59,14 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
 }
 
+const safeJsonParse = Result.fromThrowable(
+  (str: string) => JSON.parse(str) as unknown,
+  () => null,
+)
+
 function parseJson(value: string): unknown | null {
-  try {
-    return JSON.parse(value)
-  } catch {
-    return null
-  }
+  const result = safeJsonParse(value)
+  return result.isOk() ? result.value : null
 }
 
 function findInitialContinuation(html: string): ContinuationEndpoint | null {

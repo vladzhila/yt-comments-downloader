@@ -36,6 +36,7 @@ bun run check         # Lint + test in parallel
 - Pagination via continuation tokens (stack-based)
 - Reply threads require separate continuation token fetching
 - Initial continuation comes from `sortFilterSubMenuRenderer.subMenuItems`
+- Error handling uses `neverthrow` (`Result`, `ResultAsync`, `andThen` chains)
 
 ## Bun Conventions
 

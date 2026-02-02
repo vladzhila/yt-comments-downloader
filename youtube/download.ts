@@ -31,41 +31,26 @@ async function downloadComments(
   options: DownloadOptions = {},
 ): Promise<CommentResult> {
   const { minLikes = DEFAULT_MIN_LIKES, onProgress, signal, baseUrl } = options
+
   const abortResult = abortIfNeeded(signal)
-  if (!abortResult.ok) {
-    return { comments: [], error: abortResult.error }
-  }
+  if (abortResult.isErr()) return { comments: [], error: abortResult.error }
 
   const videoId = extractVideoId(urlOrId)
-  if (!videoId) {
-    return { comments: [], error: ERROR_INVALID_URL }
-  }
+  if (!videoId) return { comments: [], error: ERROR_INVALID_URL }
 
   const resolvedBaseUrl = normalizeBaseUrl(baseUrl ?? DEFAULT_YOUTUBE_URL)
 
   const pageResult = await fetchPage(resolvedBaseUrl, videoId, signal)
-  if (!pageResult.ok) {
-    return { comments: [], error: pageResult.error }
-  }
+  if (pageResult.isErr()) return { comments: [], error: pageResult.error }
 
   const html = pageResult.value
   const apiKey = extractApiKey(html)
   const videoTitle = extractVideoTitle(html)
 
-  if (!apiKey) {
-    return {
-      comments: [],
-      error: ERROR_NO_API_KEY,
-    }
-  }
+  if (!apiKey) return { comments: [], error: ERROR_NO_API_KEY }
 
   const initialEndpoint = findInitialContinuation(html)
-  if (!initialEndpoint) {
-    return {
-      comments: [],
-      error: ERROR_NO_COMMENTS,
-    }
-  }
+  if (!initialEndpoint) return { comments: [], error: ERROR_NO_COMMENTS }
 
   const commentsResult = await fetchComments(
     resolvedBaseUrl,
@@ -75,12 +60,9 @@ async function downloadComments(
     onProgress,
     signal,
   )
-  if (!commentsResult.ok) {
-    return { comments: [], error: commentsResult.error }
-  }
+  if (commentsResult.isErr()) return { comments: [], error: commentsResult.error }
 
   const sorted = commentsResult.value.sort((a, b) => b.votes - a.votes)
-
   return { comments: sorted, videoTitle: videoTitle ?? undefined }
 }
 
