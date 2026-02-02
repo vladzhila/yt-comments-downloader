@@ -15,7 +15,6 @@ import {
   USER_AGENT,
   WATCH_PATH,
 } from './constants.ts'
-import { TITLE_DEBUG_PREFIX } from './constants.ts'
 import { abortIfNeeded } from './abort.ts'
 import { parseCommentsFromMutations, searchDict } from './parse.ts'
 import type {
@@ -70,42 +69,19 @@ async function fetchOembedTitle(
     watchUrl,
   )}&${OEMBED_FORMAT_PARAM}=${OEMBED_FORMAT}`
   const responseResult = await safeFetch(oembedUrl, { headers: PAGE_HEADERS, signal })
-  if (responseResult.isErr()) {
-    console.info(`${TITLE_DEBUG_PREFIX} oembed_fetch_error`, {
-      baseUrl,
-      videoId,
-      error: responseResult.error,
-    })
-    return null
-  }
+  if (responseResult.isErr()) return null
 
   const response = responseResult.value
-  if (!response.ok) {
-    console.info(`${TITLE_DEBUG_PREFIX} oembed_non_ok`, {
-      baseUrl,
-      videoId,
-      status: response.status,
-    })
-    return null
-  }
+  if (!response.ok) return null
 
   const dataResult = await ResultAsync.fromPromise(response.json(), () => null)
-  if (dataResult.isErr()) {
-    console.info(`${TITLE_DEBUG_PREFIX} oembed_invalid_json`, { baseUrl, videoId })
-    return null
-  }
+  if (dataResult.isErr()) return null
 
   const data = dataResult.value
-  if (!data || typeof data !== 'object') {
-    console.info(`${TITLE_DEBUG_PREFIX} oembed_invalid_payload`, { baseUrl, videoId })
-    return null
-  }
+  if (!data || typeof data !== 'object') return null
 
   const title = (data as { title?: unknown }).title
-  if (typeof title !== 'string') {
-    console.info(`${TITLE_DEBUG_PREFIX} oembed_missing_title`, { baseUrl, videoId })
-    return null
-  }
+  if (typeof title !== 'string') return null
 
   return title
 }

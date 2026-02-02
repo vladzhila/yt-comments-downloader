@@ -1,12 +1,10 @@
 import { DEFAULT_YOUTUBE_URL } from './constants.ts'
 import { abortIfNeeded } from './abort.ts'
 import { fetchComments, fetchOembedTitle, fetchPage } from './fetch.ts'
-import { TITLE_DEBUG_PREFIX } from './constants.ts'
 import {
   extractApiKey,
   extractVideoId,
   extractVideoTitle,
-  getTitleDebugInfo,
   findInitialContinuation,
 } from './html.ts'
 import type { CommentResult } from './types.ts'
@@ -51,8 +49,6 @@ async function downloadComments(
 
   if (!apiKey) return { comments: [], error: ERROR_NO_API_KEY }
 
-  const debugInfo = !videoTitle ? getTitleDebugInfo(html) : null
-
   const initialEndpoint = findInitialContinuation(html)
   if (!initialEndpoint) return { comments: [], error: ERROR_NO_COMMENTS }
 
@@ -69,14 +65,6 @@ async function downloadComments(
   const sorted = commentsResult.value.sort((a, b) => b.votes - a.votes)
   const oembedTitle = videoTitle ? null : await fetchOembedTitle(resolvedBaseUrl, videoId, signal)
   const resolvedTitle = videoTitle || oembedTitle || undefined
-  if (debugInfo) {
-    console.info(`${TITLE_DEBUG_PREFIX} missing_html_title`, {
-      videoId,
-      baseUrl: resolvedBaseUrl,
-      oembedTitleFound: Boolean(oembedTitle),
-      ...debugInfo,
-    })
-  }
   return { comments: sorted, videoTitle: resolvedTitle }
 }
 
