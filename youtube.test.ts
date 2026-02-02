@@ -14,9 +14,9 @@ import {
   extractVideoTitle,
   CANCELLED_ERROR_MESSAGE,
 } from './youtube.ts'
-import { findInitialContinuation } from './youtube/html.ts'
+import { findInitialContinuation, getTitleDebugInfo } from './youtube/html.ts'
 import type { Comment, Mutation } from './youtube.ts'
-import { REPLY_PARENT_MARKER } from './youtube/constants.ts'
+import { REPLY_PARENT_MARKER, TITLE_DEBUG_SNIPPET_LENGTH } from './youtube/constants.ts'
 import { asCommentId, asVideoId } from './youtube/ids.ts'
 import * as XLSX from 'xlsx'
 
@@ -38,6 +38,7 @@ const FALLBACK_TOKEN = 'fallback-token'
 const TITLE_ENCODED = 'Hello &amp; World'
 const VIDEO_ID = asVideoId('dQw4w9WgXcQ')
 const FIRST_COMMENT_ERROR = 'Expected comment to exist'
+const SNIPPET_PADDING = 50
 
 type MutationOptions = {
   id: string
@@ -896,5 +897,41 @@ describe('extractVideoTitle', () => {
   test('returns null when not found', () => {
     const html = '<html><body>No title</body></html>'
     expect(extractVideoTitle(html)).toBe(null)
+  })
+})
+
+describe('getTitleDebugInfo', function () {
+  test('reports title sources and markers', function () {
+    const head =
+      '<head><meta property="og:title" content="OG">' +
+      '<meta itemprop="name" content="Item">' +
+      '<meta name="title" content="Meta">' +
+      '<title>Title - YouTube</title></head>'
+    const html =
+      `<html>${head}<body>consent.youtube.com captcha unusual traffic` +
+      '<script>var ytInitialData = {};</script>' +
+      '<script>var ytInitialPlayerResponse = {"videoDetails":{"title":"Player"}};</script>' +
+      '</body></html>'
+
+    const info = getTitleDebugInfo(html)
+
+    expect(info.hasOgTitle).toBe(true)
+    expect(info.hasMetaItempropName).toBe(true)
+    expect(info.hasMetaNameTitle).toBe(true)
+    expect(info.hasTitleTag).toBe(true)
+    expect(info.hasPlayerResponse).toBe(true)
+    expect(info.hasInitialData).toBe(true)
+    expect(info.markers.consent).toBe(true)
+    expect(info.markers.captcha).toBe(true)
+    expect(info.markers.bot).toBe(true)
+    expect(info.snippet.startsWith('<head>')).toBe(true)
+  })
+
+  test('limits snippet length', function () {
+    const longHead = `<head>${'a'.repeat(TITLE_DEBUG_SNIPPET_LENGTH + SNIPPET_PADDING)}</head>`
+    const html = `<html>${longHead}<body></body></html>`
+    const info = getTitleDebugInfo(html)
+
+    expect(info.snippet.length).toBe(TITLE_DEBUG_SNIPPET_LENGTH)
   })
 })

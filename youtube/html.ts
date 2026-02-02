@@ -1,4 +1,5 @@
 import { Result } from 'neverthrow'
+import { TITLE_DEBUG_SNIPPET_LENGTH } from './constants.ts'
 import { asVideoId } from './ids.ts'
 import type { ContinuationEndpoint, SortFilterSubMenuRenderer, VideoId } from './types.ts'
 import { searchDict } from './parse.ts'
@@ -19,6 +20,10 @@ const TITLE_TAG_PATTERN = /<title>([^<]+)<\/title>/
 const TITLE_SUFFIX_PATTERN = / - YouTube$/
 const API_KEY_PATTERN = /"INNERTUBE_API_KEY":"([^"]+)"/
 const VIDEO_ID_LENGTH = 11
+const HEAD_PATTERN = /<head[^>]*>[\s\S]*?<\/head>/i
+const CONSENT_MARKER = 'consent.youtube.com'
+const CAPTCHA_MARKER = 'captcha'
+const BOT_MARKER = 'unusual traffic'
 
 function extractVideoId(urlOrId: string): VideoId | null {
   if (urlOrId.length === VIDEO_ID_LENGTH && !urlOrId.includes('/')) {
@@ -58,6 +63,45 @@ function extractTitleFromPlayerResponse(html: string): string | null {
   if (typeof title !== 'string') return null
 
   return decodeHtmlEntities(title)
+}
+
+type TitleDebugInfo = {
+  htmlLength: number
+  hasOgTitle: boolean
+  hasMetaItempropName: boolean
+  hasMetaNameTitle: boolean
+  hasTitleTag: boolean
+  hasPlayerResponse: boolean
+  hasInitialData: boolean
+  markers: {
+    consent: boolean
+    captcha: boolean
+    bot: boolean
+  }
+  snippet: string
+}
+
+function getTitleDebugInfo(html: string): TitleDebugInfo {
+  const headMatch = html.match(HEAD_PATTERN)
+  const snippetSource = headMatch?.[0] ?? html
+  const snippet = snippetSource.slice(0, TITLE_DEBUG_SNIPPET_LENGTH)
+  const lower = html.toLowerCase()
+
+  return {
+    htmlLength: html.length,
+    hasOgTitle: OG_TITLE_PATTERN.test(html),
+    hasMetaItempropName: META_ITEMPROP_NAME_PATTERN.test(html),
+    hasMetaNameTitle: META_NAME_TITLE_PATTERN.test(html),
+    hasTitleTag: TITLE_TAG_PATTERN.test(html),
+    hasPlayerResponse: PLAYER_RESPONSE_PATTERN.test(html),
+    hasInitialData: INITIAL_DATA_PATTERN.test(html),
+    markers: {
+      consent: lower.includes(CONSENT_MARKER),
+      captcha: lower.includes(CAPTCHA_MARKER),
+      bot: lower.includes(BOT_MARKER),
+    },
+    snippet,
+  }
 }
 
 function extractVideoTitle(html: string): string | null {
@@ -136,6 +180,7 @@ export {
   extractVideoId,
   extractApiKey,
   extractVideoTitle,
+  getTitleDebugInfo,
   decodeHtmlEntities,
   findInitialContinuation,
 }
