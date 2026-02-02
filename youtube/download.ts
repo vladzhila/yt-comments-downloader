@@ -74,6 +74,8 @@ async function downloadComments(
       videoId,
       baseUrl: resolvedBaseUrl,
       oembedTitleFound: Boolean(oembedTitle),
+      oembedTitle,
+      resolvedTitle,
       ...debugInfo,
     })
   }
