@@ -67,9 +67,9 @@ Server-Sent Events stream with real-time progress updates.
 bun test              # Run tests
 bun run test:coverage # Run tests with coverage report
 bun run lint          # Run ESLint
+bun run typecheck     # TypeScript type checking
 bun run format        # Format code with Prettier
 bun run check         # Run lint + typecheck + test in parallel
-bun run typecheck     # TypeScript type checking
 ```
 
 Pre-commit hooks automatically run lint-staged and checks.
