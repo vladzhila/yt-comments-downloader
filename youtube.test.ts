@@ -724,13 +724,13 @@ describe('searchDict', () => {
   test('finds multiple occurrences', () => {
     const obj = { items: [{ id: 1 }, { id: 2 }, { id: 3 }] }
     const results = [...searchDict(obj, 'id')]
-    expect(results.sort()).toEqual([1, 2, 3])
+    expect(results.toSorted()).toEqual([1, 2, 3])
   })
 
   test('finds in arrays', () => {
     const obj = [{ key: 'a' }, { key: 'b' }]
     const results = [...searchDict(obj, 'key')]
-    expect(results.sort()).toEqual(['a', 'b'])
+    expect(results.toSorted()).toEqual(['a', 'b'])
   })
 
   test('returns empty for missing key', () => {

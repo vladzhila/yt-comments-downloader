@@ -64,6 +64,6 @@ export async function downloadComments(
 
   const sorted = commentsResult.value.toSorted((a, b) => b.votes - a.votes)
   const oembedTitle = videoTitle ? null : await fetchOembedTitle(resolvedBaseUrl, videoId, signal)
-  const resolvedTitle = videoTitle || oembedTitle || undefined
+  const resolvedTitle = videoTitle ?? oembedTitle ?? undefined
   return { comments: sorted, videoTitle: resolvedTitle }
 }

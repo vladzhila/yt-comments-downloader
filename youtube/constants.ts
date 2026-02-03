@@ -34,3 +34,5 @@ export const COMMENT_SECTION_IDS = [
   'engagement-panel-comments-section',
   'shorts-engagement-panel-comments-section',
 ]
+
+export const COMMENT_SECTION_ID_SET = new Set(COMMENT_SECTION_IDS)

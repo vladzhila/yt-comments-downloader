@@ -3,7 +3,7 @@ import {
   ACCEPT_LANGUAGE,
   CLIENT_NAME,
   CLIENT_VERSION,
-  COMMENT_SECTION_IDS,
+  COMMENT_SECTION_ID_SET,
   CONTINUATION_DELAY_MS,
   NEXT_PATH,
   OEMBED_PATH,
@@ -148,7 +148,7 @@ function processContinuationItem(
 
   const endpoints = [...searchDict(item, 'continuationEndpoint')].filter(isContinuationEndpoint)
 
-  if (COMMENT_SECTION_IDS.includes(targetId)) {
+  if (COMMENT_SECTION_ID_SET.has(targetId)) {
     continuations.unshift(...endpoints)
     return
   }
