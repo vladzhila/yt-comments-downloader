@@ -1,6 +1,6 @@
 # YouTube Comments Downloader
 
-Web interface for downloading YouTube comments as CSV.
+Web interface for downloading YouTube comments as CSV, JSON, XLSX, or Markdown.
 
 ## Stack
 
