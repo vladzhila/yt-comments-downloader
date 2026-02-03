@@ -54,6 +54,18 @@ Uses `neverthrow` library throughout:
 - Chain with `.andThen()`, `.map()`, `.unwrapOr()`
 - Abort signal checked via `abortIfNeeded()` between pagination requests
 
+### Frontend
+
+- `index.html` - Markup and CSS (CSS variables for theming, responsive design)
+- `main.js` - Browser JavaScript (vanilla JS, no build step)
+
+Key patterns:
+
+- Theme: CSS variables in `:root`, toggled via `data-theme` attribute
+- State persistence: `localStorage` for minLikes, format, theme preferences
+- Download flow: EventSource (SSE) to `/api/comments/stream`, progress updates, blob download
+- Validation: Client-side YouTube URL validation before request
+
 ## Code Style
 
 - Always use `{}` blocks for control-flow statements (`if`, `for`, `while`, `switch`, etc.)

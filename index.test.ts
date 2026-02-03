@@ -21,10 +21,10 @@ test('minLikes default is 0 in API params', async () => {
 })
 
 test('minLikes is persisted in localStorage', async () => {
-  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
-  expect(html).toContain("const MIN_LIKES_STORAGE_KEY = 'yt-comments:minLikes'")
-  expect(html).toMatch(/localStorage\.getItem\(MIN_LIKES_STORAGE_KEY\)/)
-  expect(html).toMatch(/localStorage\.setItem\(MIN_LIKES_STORAGE_KEY/)
+  const js = await Bun.file(new URL('./main.js', import.meta.url)).text()
+  expect(js).toContain("const MIN_LIKES_STORAGE_KEY = 'yt-comments:minLikes'")
+  expect(js).toMatch(/localStorage\.getItem\(MIN_LIKES_STORAGE_KEY\)/)
+  expect(js).toMatch(/localStorage\.setItem\(MIN_LIKES_STORAGE_KEY/)
 })
 
 test('minLikes helper text explains the filter', async () => {
@@ -34,9 +34,9 @@ test('minLikes helper text explains the filter', async () => {
 })
 
 test('invalid YouTube URL message is present', async () => {
-  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
-  expect(html).toContain('Enter a valid YouTube URL')
-  expect(html).toContain('function isValidYouTubeUrl')
+  const js = await Bun.file(new URL('./main.js', import.meta.url)).text()
+  expect(js).toContain('Enter a valid YouTube URL')
+  expect(js).toContain('function isValidYouTubeUrl')
 })
 
 test('format default is CSV in UI', async () => {
@@ -60,17 +60,17 @@ test('theme default is system in UI', async () => {
 })
 
 test('format is persisted in localStorage', async () => {
-  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
-  expect(html).toContain("const FORMAT_STORAGE_KEY = 'yt-comments:format'")
-  expect(html).toMatch(/localStorage\.getItem\(FORMAT_STORAGE_KEY\)/)
-  expect(html).toMatch(/localStorage\.setItem\(FORMAT_STORAGE_KEY/)
+  const js = await Bun.file(new URL('./main.js', import.meta.url)).text()
+  expect(js).toContain("const FORMAT_STORAGE_KEY = 'yt-comments:format'")
+  expect(js).toMatch(/localStorage\.getItem\(FORMAT_STORAGE_KEY\)/)
+  expect(js).toMatch(/localStorage\.setItem\(FORMAT_STORAGE_KEY/)
 })
 
 test('theme is persisted in localStorage', async () => {
-  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
-  expect(html).toContain("const THEME_STORAGE_KEY = 'yt-comments:theme'")
-  expect(html).toMatch(/localStorage\.getItem\(THEME_STORAGE_KEY\)/)
-  expect(html).toMatch(/localStorage\.setItem\(THEME_STORAGE_KEY/)
+  const js = await Bun.file(new URL('./main.js', import.meta.url)).text()
+  expect(js).toContain("const THEME_STORAGE_KEY = 'yt-comments:theme'")
+  expect(js).toMatch(/localStorage\.getItem\(THEME_STORAGE_KEY\)/)
+  expect(js).toMatch(/localStorage\.setItem\(THEME_STORAGE_KEY/)
 })
 
 test('download button starts disabled', async () => {
@@ -79,12 +79,12 @@ test('download button starts disabled', async () => {
 })
 
 test('download button toggles on url input', async () => {
-  const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
-  expect(html).toContain('function updateDownloadEnabled()')
-  expect(html).toContain(
+  const js = await Bun.file(new URL('./main.js', import.meta.url)).text()
+  expect(js).toContain('function updateDownloadEnabled()')
+  expect(js).toContain(
     "urlInput.addEventListener('input', updateDownloadEnabled)",
   )
-  expect(html).toContain('updateDownloadEnabled()')
+  expect(js).toContain('updateDownloadEnabled()')
 })
 
 test('server config sets idleTimeout', async () => {

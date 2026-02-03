@@ -82,7 +82,8 @@ Pre-commit hooks automatically run lint-staged and checks.
 - `server/`: request parsing, handlers, and response formatting
 - `youtube.ts`: public exports for the YouTube client
 - `youtube/`: fetch, parse, and format internals
-- `index.html`: frontend UI
+- `index.html`: frontend UI (markup and styles)
+- `main.js`: frontend JavaScript
 
 ## Formats
 
