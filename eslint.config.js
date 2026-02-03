@@ -5,11 +5,9 @@ import tseslint from 'typescript-eslint'
 export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  { ignores: ['dist/**', 'coverage/**'] },
   {
-    ignores: ['dist/**', 'coverage/**'],
-  },
-  {
-    files: ['**/*.ts'],
+    files: ['**/*.ts', '**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -34,10 +32,16 @@ export default [
       'object-curly-newline': [
         'error',
         {
-          ObjectExpression: { multiline: true, minProperties: 2 },
+          ObjectExpression: {
+            multiline: true,
+            minProperties: 2,
+          },
           ObjectPattern: { multiline: true },
           ImportDeclaration: { multiline: true },
-          ExportDeclaration: { multiline: true, minProperties: 2 },
+          ExportDeclaration: {
+            multiline: true,
+            minProperties: 2,
+          },
         },
       ],
     },

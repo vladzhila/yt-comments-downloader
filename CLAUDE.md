@@ -15,7 +15,7 @@ bun run typecheck     # TypeScript check
 bun run lint          # ESLint check
 bun run lint:fix      # ESLint with auto-fix
 bun run fix           # Format + lint fix (auto-fix all issues)
-bun run check         # Lint + typecheck + test (use before committing)
+bun run check         # Lint + typecheck + test (read-only, use after fix)
 ```
 
 ## Architecture
@@ -77,6 +77,8 @@ if (x) {
 ```
 
 ## Verification Workflow
+
+**IMPORTANT:** Always run `bun run fix` before `bun run check`. The `check` command is read-only and will fail on auto-fixable formatting/lint issues. - use `bun run fix && bun run check`
 
 **Before declaring a feature "done":**
 
