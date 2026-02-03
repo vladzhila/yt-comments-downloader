@@ -1,55 +1,63 @@
-# YouTube Comments Downloader
+# CLAUDE.md
 
-Web interface for downloading YouTube comments as CSV, JSON, XLSX, or Markdown.
-
-## Stack
-
-- Runtime: Bun
-- Server: Bun.serve() with HTML imports
-- Frontend: Vanilla HTML/CSS/JS (no frameworks)
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Commands
 
 ```bash
 bun run dev           # Start with hot reload
 bun run start         # Production start
-bun test              # Run tests
+bun test              # Run all tests
+bun test youtube/     # Run tests in a directory
+bun test parse.test   # Run a single test file
 bun run test:coverage # Run tests with coverage
 bun run typecheck     # TypeScript check
 bun run lint          # ESLint check
-bun run format        # Prettier format
-bun run check         # Lint + test in parallel
+bun run check         # Lint + test in parallel (use before committing)
 ```
 
-## Key Files
+## Architecture
 
-- `index.ts` - HTTP server entrypoint and routing
-- `server/` - Server helpers (params, handlers, format builders)
-- `youtube.ts` - Public YouTube client exports
-- `youtube/` - YouTube client internals (fetch, parsing, formatting)
-- `index.html` - Frontend (embedded CSS/JS)
+### Request Flow
 
-## YouTube API Notes
+1. `index.ts` routes `/api/comments` and `/api/comments/stream` to handlers
+2. `server/handlers.ts` parses params via `server/params.ts` (Zod validation)
+3. Handler calls `downloadComments()` from `youtube/download.ts`
+4. Download orchestrates: fetch page → extract API key → paginate comments
+5. Response formatted via `server/formats.ts` (CSV/JSON/XLSX/Markdown)
 
-- Uses undocumented YouTube innertube API
-- Pagination via continuation tokens (stack-based)
-- Reply threads require separate continuation token fetching
-- Initial continuation comes from `sortFilterSubMenuRenderer.subMenuItems`
-- Error handling uses `neverthrow` (`Result`, `ResultAsync`, `andThen` chains)
+### YouTube Client (`youtube/`)
 
-## Bun Conventions
+- `download.ts` - Main entry point, orchestrates the flow
+- `fetch.ts` - HTTP calls using `neverthrow` Result types
+- `parse.ts` - Extract comments from YouTube's mutation payloads
+- `html.ts` - Parse initial page for API key, video title, initial continuation
+- `types.ts` - Branded types (`VideoId`, `CommentId`) and interfaces
 
-- Use `bun <file>` instead of `node`
-- Use `bun test` instead of jest/vitest
-- Bun.serve() for HTTP (not express)
-- HTML imports work directly with Bun's bundler
+### Pagination Model
+
+Comments use a stack-based continuation system:
+
+- Initial continuation extracted from `sortFilterSubMenuRenderer.subMenuItems`
+- Top-level comments: continuation tokens prepended to stack (process in order)
+- Reply threads: continuation tokens appended to stack (depth-first)
+- Each page returns mutations containing `commentEntityPayload` objects
+
+### Error Handling
+
+Uses `neverthrow` library throughout:
+
+- `Result<T, E>` for sync operations
+- `ResultAsync<T, E>` for async operations
+- Chain with `.andThen()`, `.map()`, `.unwrapOr()`
+- Abort signal checked via `abortIfNeeded()` between pagination requests
 
 ## Verification Workflow
 
 **Before declaring a feature "done":**
 
-1. CRITICAL: every implementation must end with adding/updating tests
-2. CRITICAL: Coverage target: 80-90%. Prioritize test quality over chasing 100% (`bun run test:coverage`)
-3. CRITICAL: runs lint, typecheck, and test concurrently (`bun run check`); all must pass
-4. CRITICAL: all documents (e.g. readme, claude md files) must be updated and actualized
-5. ALWAYS REMOVE DEAD CODE. ALWAYS remove any code that proved unnecessary or didn’t work during the session
+1. Every implementation must end with adding/updating tests
+2. Coverage target: 80-90% (`bun run test:coverage`)
+3. Run `bun run check` (lint + test); all must pass
+4. Update README and CLAUDE.md if behavior changes
+5. Remove dead code from the session
