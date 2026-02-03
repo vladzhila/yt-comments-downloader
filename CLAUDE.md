@@ -13,7 +13,7 @@ bun test parse.test   # Run a single test file
 bun run test:coverage # Run tests with coverage
 bun run typecheck     # TypeScript check
 bun run lint          # ESLint check
-bun run check         # Lint + test in parallel (use before committing)
+bun run check         # Lint + typecheck + test in parallel (use before committing)
 ```
 
 ## Architecture
@@ -58,6 +58,6 @@ Uses `neverthrow` library throughout:
 
 1. Every implementation must end with adding/updating tests
 2. Coverage target: 80-90% (`bun run test:coverage`)
-3. Run `bun run check` (lint + test); all must pass
+3. Run `bun run check` (lint + typecheck + test); all must pass
 4. Update README and CLAUDE.md if behavior changes
 5. Remove dead code from the session

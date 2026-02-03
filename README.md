@@ -68,7 +68,7 @@ bun test              # Run tests
 bun run test:coverage # Run tests with coverage report
 bun run lint          # Run ESLint
 bun run format        # Format code with Prettier
-bun run check         # Run lint + test in parallel
+bun run check         # Run lint + typecheck + test in parallel
 bun run typecheck     # TypeScript type checking
 ```
 
