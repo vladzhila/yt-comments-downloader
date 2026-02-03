@@ -103,7 +103,3 @@ Pre-commit hooks automatically run lint-staged and checks.
 ### Markdown
 
 - Markdown table with the same columns as CSV
-
-## Python CLI
-
-A Python CLI version is available in [python/](python/). See [python/README.md](python/README.md).

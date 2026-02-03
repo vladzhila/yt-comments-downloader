@@ -28,7 +28,6 @@ bun run check         # Lint + test in parallel
 - `youtube.ts` - Public YouTube client exports
 - `youtube/` - YouTube client internals (fetch, parsing, formatting)
 - `index.html` - Frontend (embedded CSS/JS)
-- `python/` - Alternative Python CLI version
 
 ## YouTube API Notes
 
