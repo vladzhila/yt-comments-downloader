@@ -16,24 +16,30 @@ import {
   WATCH_PATH,
 } from './constants.ts'
 import { abortIfNeeded } from './abort.ts'
+import { isContinuationEndpoint, isRecord } from './guards.ts'
 import { parseCommentsFromMutations, searchDict } from './parse.ts'
 import type {
+  ButtonRenderer,
   Comment,
   ContinuationAction,
   ContinuationEndpoint,
-  ContinuationResponse,
+  FetchCommentsOptions,
+  Mutation,
+  OembedResponse,
   VideoId,
 } from './types.ts'
 
 const REQUEST_HEADERS = {
   'Content-Type': 'application/json',
   'User-Agent': USER_AGENT,
-} as const
+} as const satisfies RequestInit['headers']
 
 const PAGE_HEADERS = {
   'User-Agent': USER_AGENT,
   'Accept-Language': ACCEPT_LANGUAGE,
-} as const
+} as const satisfies RequestInit['headers']
+
+const REPLY_ITEM_PREFIX = 'comment-replies-item'
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
@@ -46,7 +52,7 @@ function safeFetch(url: string, init: RequestInit): ResultAsync<Response, string
   )
 }
 
-function fetchPage(
+export function fetchPage(
   baseUrl: string,
   videoId: VideoId,
   signal?: AbortSignal,
@@ -59,41 +65,122 @@ function fetchPage(
   )
 }
 
-async function fetchOembedTitle(
+function buildOembedUrl(baseUrl: string, videoId: VideoId): string {
+  const watchUrl = `${baseUrl}${WATCH_PATH}?v=${videoId}`
+  return `${baseUrl}${OEMBED_PATH}?${OEMBED_URL_PARAM}=${encodeURIComponent(watchUrl)}&${OEMBED_FORMAT_PARAM}=${OEMBED_FORMAT}`
+}
+
+function isOembedResponse(data: unknown): data is OembedResponse {
+  return isRecord(data)
+}
+
+function extractTitle(data: unknown): string | null {
+  if (!isOembedResponse(data)) return null
+  return typeof data.title === 'string' ? data.title : null
+}
+
+export async function fetchOembedTitle(
   baseUrl: string,
   videoId: VideoId,
   signal?: AbortSignal,
 ): Promise<string | null> {
-  const watchUrl = `${baseUrl}${WATCH_PATH}?v=${videoId}`
-  const oembedUrl = `${baseUrl}${OEMBED_PATH}?${OEMBED_URL_PARAM}=${encodeURIComponent(
-    watchUrl,
-  )}&${OEMBED_FORMAT_PARAM}=${OEMBED_FORMAT}`
-  const responseResult = await safeFetch(oembedUrl, { headers: PAGE_HEADERS, signal })
-  if (responseResult.isErr()) return null
+  const url = buildOembedUrl(baseUrl, videoId)
+  const result = await safeFetch(url, { headers: PAGE_HEADERS, signal })
+    .andThen((r) => (r.ok ? ok(r) : err(null)))
+    .andThen((r) => ResultAsync.fromPromise(r.json(), () => null))
+    .map(extractTitle)
 
-  const response = responseResult.value
-  if (!response.ok) return null
-
-  const dataResult = await ResultAsync.fromPromise(response.json(), () => null)
-  if (dataResult.isErr()) return null
-
-  const data = dataResult.value
-  if (!data || typeof data !== 'object') return null
-
-  const title = (data as { title?: unknown }).title
-  if (typeof title !== 'string') return null
-
-  return title
+  return result.unwrapOr(null)
 }
 
-async function fetchComments(
-  baseUrl: string,
-  apiKey: string,
-  initialEndpoint: ContinuationEndpoint,
-  minLikes: number,
-  onProgress?: (count: number, filtered: number) => void,
-  signal?: AbortSignal,
+function buildRequestBody(token: string): string {
+  return JSON.stringify({
+    context: { client: { clientName: CLIENT_NAME, clientVersion: CLIENT_VERSION } },
+    continuation: token,
+  })
+}
+
+function isMutation(value: unknown): value is Mutation {
+  return isRecord(value)
+}
+
+function extractMutations(value: unknown): Mutation[] {
+  if (!isRecord(value)) return []
+  const frameworkUpdates = value.frameworkUpdates
+  if (!isRecord(frameworkUpdates)) return []
+  const entityBatchUpdate = frameworkUpdates.entityBatchUpdate
+  if (!isRecord(entityBatchUpdate)) return []
+  const mutations = entityBatchUpdate.mutations
+  if (!Array.isArray(mutations)) return []
+  return mutations.filter(isMutation)
+}
+
+function isButtonRenderer(value: unknown): value is ButtonRenderer {
+  return isRecord(value) && Object.hasOwn(value, 'command')
+}
+
+function hasContinuationToken(
+  endpoint: ContinuationEndpoint,
+): endpoint is ContinuationEndpoint & { continuationCommand: { token: string } } {
+  return typeof endpoint.continuationCommand?.token === 'string'
+}
+
+function hasValidToken(
+  btn: ButtonRenderer,
+): btn is ButtonRenderer & { command: ContinuationEndpoint } {
+  if (!btn.command) return false
+  return hasContinuationToken(btn.command)
+}
+
+function extractReplyButtonEndpoints(item: Record<string, unknown>): ContinuationEndpoint[] {
+  return [...searchDict(item, 'buttonRenderer')]
+    .filter(isButtonRenderer)
+    .filter(hasValidToken)
+    .map((btn) => btn.command)
+}
+
+function processContinuationItem(
+  item: unknown,
+  targetId: string,
+  continuations: ContinuationEndpoint[],
+): void {
+  if (!isRecord(item)) return
+
+  const endpoints = [...searchDict(item, 'continuationEndpoint')].filter(isContinuationEndpoint)
+
+  if (COMMENT_SECTION_IDS.includes(targetId)) {
+    continuations.unshift(...endpoints)
+    return
+  }
+
+  if (!targetId.startsWith(REPLY_ITEM_PREFIX)) return
+
+  if (Object.hasOwn(item, 'continuationItemRenderer')) {
+    continuations.push(...extractReplyButtonEndpoints(item))
+    return
+  }
+  continuations.unshift(...endpoints)
+}
+
+function isContinuationAction(value: unknown): value is ContinuationAction {
+  return isRecord(value)
+}
+
+function processActions(actions: readonly unknown[], continuations: ContinuationEndpoint[]): void {
+  for (const action of actions) {
+    if (!isContinuationAction(action)) continue
+    const targetId = action.targetId ?? ''
+    const items = action.continuationItems ?? []
+    for (const item of items) {
+      processContinuationItem(item, targetId, continuations)
+    }
+  }
+}
+
+export async function fetchComments(
+  options: FetchCommentsOptions,
 ): Promise<Result<Comment[], string>> {
+  const { baseUrl, apiKey, initialEndpoint, minLikes, onProgress, signal } = options
   const comments: Comment[] = []
   const continuations: ContinuationEndpoint[] = [initialEndpoint]
   const progress = { processed: 0 }
@@ -103,32 +190,23 @@ async function fetchComments(
     if (abortResult.isErr()) return err(abortResult.error)
 
     const continuation = continuations.pop()
-    if (!continuation) continue
-    const token = continuation.continuationCommand?.token
+    const token = continuation?.continuationCommand?.token
     if (!token) continue
 
-    const responseResult = await safeFetch(`${baseUrl}${NEXT_PATH}?key=${apiKey}`, {
+    const url = `${baseUrl}${NEXT_PATH}?key=${apiKey}`
+    const responseResult = await safeFetch(url, {
       method: 'POST',
       headers: REQUEST_HEADERS,
-      body: JSON.stringify({
-        context: {
-          client: {
-            clientName: CLIENT_NAME,
-            clientVersion: CLIENT_VERSION,
-          },
-        },
-        continuation: token,
-      }),
+      body: buildRequestBody(token),
       signal,
     })
 
     if (responseResult.isErr()) return err(responseResult.error)
-
     const response = responseResult.value
     if (!response.ok) return err(`Failed to fetch comments: ${response.status}`)
 
-    const data = (await response.json()) as ContinuationResponse
-    const mutations = data.frameworkUpdates?.entityBatchUpdate?.mutations ?? []
+    const data = await response.json()
+    const mutations = extractMutations(data)
     const batchComments = parseCommentsFromMutations(mutations, minLikes)
     comments.push(...batchComments)
     progress.processed += mutations.length
@@ -139,38 +217,7 @@ async function fetchComments(
 
     const reloadActions = [...searchDict(data, 'reloadContinuationItemsCommand')]
     const appendActions = [...searchDict(data, 'appendContinuationItemsAction')]
-    const allActions = [...reloadActions, ...appendActions] as ContinuationAction[]
-
-    for (const action of allActions) {
-      const targetId = action.targetId ?? ''
-      const items = action.continuationItems ?? []
-
-      for (const item of items) {
-        if (!item || typeof item !== 'object') continue
-
-        const endpoints = [...searchDict(item, 'continuationEndpoint')] as ContinuationEndpoint[]
-
-        if (COMMENT_SECTION_IDS.includes(targetId)) {
-          continuations.unshift(...endpoints)
-          continue
-        }
-
-        if (targetId.startsWith('comment-replies-item')) {
-          if ('continuationItemRenderer' in item) {
-            const buttonRenderers = [...searchDict(item, 'buttonRenderer')] as Array<{
-              command?: ContinuationEndpoint
-            }>
-            for (const btn of buttonRenderers) {
-              if (btn.command?.continuationCommand?.token) {
-                continuations.push(btn.command)
-              }
-            }
-          } else {
-            continuations.unshift(...endpoints)
-          }
-        }
-      }
-    }
+    processActions([...reloadActions, ...appendActions], continuations)
 
     const abortAfter = abortIfNeeded(signal)
     if (abortAfter.isErr()) return err(abortAfter.error)
@@ -179,5 +226,3 @@ async function fetchComments(
 
   return ok(comments)
 }
-
-export { fetchPage, fetchComments, fetchOembedTitle }

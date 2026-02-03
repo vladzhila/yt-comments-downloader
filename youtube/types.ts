@@ -1,10 +1,10 @@
 type Brand<T, B extends string> = T & { readonly __brand: B }
 
-type VideoId = Brand<string, 'VideoId'>
-type CommentId = Brand<string, 'CommentId'>
-type ReplyMarker = 'reply'
+export type VideoId = Brand<string, 'VideoId'>
+export type CommentId = Brand<string, 'CommentId'>
+export type ReplyMarker = 'reply'
 
-interface Comment {
+export interface Comment {
   cid: CommentId
   text: string
   author: string
@@ -13,13 +13,13 @@ interface Comment {
   parent?: ReplyMarker
 }
 
-interface CommentResult {
+export interface CommentResult {
   comments: Comment[]
   videoTitle?: string
   error?: string
 }
 
-interface CommentEntityPayload {
+export interface CommentEntityPayload {
   key: string
   properties?: {
     commentId?: string
@@ -35,14 +35,14 @@ interface CommentEntityPayload {
   }
 }
 
-interface Mutation {
+export interface Mutation {
   payload?: {
     commentEntityPayload?: CommentEntityPayload
   }
   entityKey?: string
 }
 
-interface ContinuationEndpoint {
+export interface ContinuationEndpoint {
   continuationCommand?: {
     token?: string
   }
@@ -53,12 +53,29 @@ interface ContinuationEndpoint {
   }
 }
 
-interface ContinuationAction {
+export interface ContinuationAction {
   targetId?: string
   continuationItems?: unknown[]
 }
 
-interface ContinuationResponse {
+export interface ButtonRenderer {
+  command?: ContinuationEndpoint
+}
+
+export interface OembedResponse {
+  title?: string
+}
+
+export interface FetchCommentsOptions {
+  baseUrl: string
+  apiKey: string
+  initialEndpoint: ContinuationEndpoint
+  minLikes: number
+  onProgress?: (count: number, filtered: number) => void
+  signal?: AbortSignal
+}
+
+export interface ContinuationResponse {
   onResponseReceivedEndpoints?: Array<{
     reloadContinuationItemsCommand?: ContinuationAction
     appendContinuationItemsAction?: ContinuationAction
@@ -70,25 +87,10 @@ interface ContinuationResponse {
   }
 }
 
-interface SortMenuItem {
+export interface SortMenuItem {
   serviceEndpoint?: ContinuationEndpoint
 }
 
-interface SortFilterSubMenuRenderer {
+export interface SortFilterSubMenuRenderer {
   subMenuItems?: SortMenuItem[]
-}
-
-export type {
-  VideoId,
-  CommentId,
-  ReplyMarker,
-  Comment,
-  CommentResult,
-  CommentEntityPayload,
-  Mutation,
-  ContinuationEndpoint,
-  ContinuationAction,
-  ContinuationResponse,
-  SortMenuItem,
-  SortFilterSubMenuRenderer,
 }

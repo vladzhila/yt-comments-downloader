@@ -29,7 +29,7 @@ function escapeMarkdownCell(value: string | number): string {
   return String(value).replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>')
 }
 
-function commentsToCSV(comments: readonly Comment[]): string {
+export function commentsToCSV(comments: readonly Comment[]): string {
   const header = COMMENT_COLUMNS.join(',')
   const rows = comments.map((comment) => {
     const row = commentToRow(comment)
@@ -40,11 +40,11 @@ function commentsToCSV(comments: readonly Comment[]): string {
   return [header, ...rows].join('\n')
 }
 
-function commentsToJSON(comments: readonly Comment[]): string {
+export function commentsToJSON(comments: readonly Comment[]): string {
   return JSON.stringify({ [JSON_ROOT_KEY]: comments })
 }
 
-function commentsToMarkdown(comments: readonly Comment[]): string {
+export function commentsToMarkdown(comments: readonly Comment[]): string {
   const header = `| ${COMMENT_COLUMNS.join(' | ')} |`
   const divider = `| ${COMMENT_COLUMNS.map(() => '---').join(' | ')} |`
   const rows = comments.map((comment) => {
@@ -55,7 +55,7 @@ function commentsToMarkdown(comments: readonly Comment[]): string {
   return [header, divider, ...rows].join('\n')
 }
 
-function commentsToXlsx(comments: readonly Comment[]): Uint8Array {
+export function commentsToXlsx(comments: readonly Comment[]): Uint8Array {
   const rows = comments.map(commentToRow)
   const commentsSheet = XLSX.utils.json_to_sheet(rows.filter((row) => !row.parent_id))
   const repliesSheet = XLSX.utils.json_to_sheet(rows.filter((row) => row.parent_id))
@@ -67,5 +67,3 @@ function commentsToXlsx(comments: readonly Comment[]): Uint8Array {
   const data = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
   return new Uint8Array(data)
 }
-
-export { commentsToCSV, commentsToJSON, commentsToMarkdown, commentsToXlsx }

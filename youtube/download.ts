@@ -26,7 +26,7 @@ function normalizeBaseUrl(url: string): string {
   return url.slice(0, -1)
 }
 
-async function downloadComments(
+export async function downloadComments(
   urlOrId: string,
   options: DownloadOptions = {},
 ): Promise<CommentResult> {
@@ -52,20 +52,18 @@ async function downloadComments(
   const initialEndpoint = findInitialContinuation(html)
   if (!initialEndpoint) return { comments: [], error: ERROR_NO_COMMENTS }
 
-  const commentsResult = await fetchComments(
-    resolvedBaseUrl,
+  const commentsResult = await fetchComments({
+    baseUrl: resolvedBaseUrl,
     apiKey,
     initialEndpoint,
     minLikes,
     onProgress,
     signal,
-  )
+  })
   if (commentsResult.isErr()) return { comments: [], error: commentsResult.error }
 
-  const sorted = commentsResult.value.sort((a, b) => b.votes - a.votes)
+  const sorted = commentsResult.value.toSorted((a, b) => b.votes - a.votes)
   const oembedTitle = videoTitle ? null : await fetchOembedTitle(resolvedBaseUrl, videoId, signal)
   const resolvedTitle = videoTitle || oembedTitle || undefined
   return { comments: sorted, videoTitle: resolvedTitle }
 }
-
-export { downloadComments }

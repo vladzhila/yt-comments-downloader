@@ -7,7 +7,14 @@ import {
   STREAM_ENCODING_TEXT,
 } from './constants.ts'
 
-const FORMAT_META = {
+const MAX_FILENAME_LENGTH = 200
+
+type FormatMeta = {
+  extension: string
+  mimeType: string
+}
+
+export const FORMAT_META = {
   csv: { extension: 'csv', mimeType: 'text/csv; charset=utf-8' },
   json: { extension: 'json', mimeType: 'application/json; charset=utf-8' },
   xlsx: {
@@ -15,9 +22,9 @@ const FORMAT_META = {
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   },
   md: { extension: 'md', mimeType: 'text/markdown; charset=utf-8' },
-} as const
+} as const satisfies Record<string, FormatMeta>
 
-type DownloadFormat = keyof typeof FORMAT_META
+export type DownloadFormat = keyof typeof FORMAT_META
 type StreamEncoding = typeof STREAM_ENCODING_TEXT | typeof STREAM_ENCODING_BASE64
 
 const FORMAT_BUILDERS = {
@@ -27,7 +34,7 @@ const FORMAT_BUILDERS = {
   xlsx: commentsToXlsx,
 } satisfies Record<DownloadFormat, (comments: readonly Comment[]) => string | Uint8Array>
 
-type StreamPayload = {
+export type StreamPayload = {
   data: string
   encoding: StreamEncoding
   filename: string
@@ -38,7 +45,7 @@ function isDownloadFormat(value: string): value is DownloadFormat {
   return Object.hasOwn(FORMAT_META, value)
 }
 
-function parseDownloadFormat(value: string | null): DownloadFormat {
+export function parseDownloadFormat(value: string | null): DownloadFormat {
   if (!value) return DEFAULT_DOWNLOAD_FORMAT
   return isDownloadFormat(value) ? value : DEFAULT_DOWNLOAD_FORMAT
 }
@@ -48,10 +55,10 @@ function sanitizeFilename(name: string): string {
     .replace(/[<>:"/\\|?*]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, 200)
+    .slice(0, MAX_FILENAME_LENGTH)
 }
 
-function buildDownloadFilename(
+export function buildDownloadFilename(
   videoTitle: string | undefined,
   videoId: VideoId,
   format: DownloadFormat,
@@ -62,14 +69,14 @@ function buildDownloadFilename(
   return `${baseName}.${FORMAT_META[format].extension}`
 }
 
-function buildDownloadData(
+export function buildDownloadData(
   format: DownloadFormat,
   comments: readonly Comment[],
 ): string | Uint8Array {
   return FORMAT_BUILDERS[format](comments)
 }
 
-function buildStreamPayload(
+export function buildStreamPayload(
   format: DownloadFormat,
   comments: readonly Comment[],
   filename: string,
@@ -84,12 +91,3 @@ function buildStreamPayload(
   const base64 = Buffer.from(data).toString('base64')
   return { data: base64, encoding: STREAM_ENCODING_BASE64, filename, mimeType }
 }
-
-export {
-  FORMAT_META,
-  buildDownloadData,
-  buildDownloadFilename,
-  buildStreamPayload,
-  parseDownloadFormat,
-}
-export type { DownloadFormat, StreamPayload }

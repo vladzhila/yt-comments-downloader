@@ -12,14 +12,14 @@ const REQUEST_PARAMS_SCHEMA = z.object({
   format: z.string().optional(),
 })
 
-type RequestParams = {
+export type RequestParams = {
   videoUrl: string
   videoId: VideoId
   minLikes: number
   format: DownloadFormat
 }
 
-function parseRequestParams(req: Request): RequestParams | Response {
+export function parseRequestParams(req: Request): RequestParams | Response {
   const url = new URL(req.url)
   const parsed = REQUEST_PARAMS_SCHEMA.safeParse({
     url: url.searchParams.get('url'),
@@ -44,6 +44,3 @@ function parseRequestParams(req: Request): RequestParams | Response {
 
   return { videoUrl, videoId, minLikes, format }
 }
-
-export { parseRequestParams }
-export type { RequestParams }

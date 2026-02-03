@@ -1,22 +1,22 @@
-const USER_AGENT =
+export const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
-const DEFAULT_YOUTUBE_URL = 'https://www.youtube.com'
-const WATCH_PATH = '/watch'
-const NEXT_PATH = '/youtubei/v1/next'
-const OEMBED_PATH = '/oembed'
-const OEMBED_URL_PARAM = 'url'
-const OEMBED_FORMAT_PARAM = 'format'
-const OEMBED_FORMAT = 'json'
-const CONTINUATION_DELAY_MS = 100
-const CANCELLED_ERROR_MESSAGE = 'Request cancelled'
-const REPLY_PARENT_MARKER = 'reply'
-const UNKNOWN_ERROR_MESSAGE = 'Unknown error'
-const CLIENT_NAME = 'WEB'
-const CLIENT_VERSION = '2.20231219.04.00'
-const ACCEPT_LANGUAGE = 'en-US,en;q=0.9'
+export const DEFAULT_YOUTUBE_URL = 'https://www.youtube.com'
+export const WATCH_PATH = '/watch'
+export const NEXT_PATH = '/youtubei/v1/next'
+export const OEMBED_PATH = '/oembed'
+export const OEMBED_URL_PARAM = 'url'
+export const OEMBED_FORMAT_PARAM = 'format'
+export const OEMBED_FORMAT = 'json'
+export const CONTINUATION_DELAY_MS = 100
+export const CANCELLED_ERROR_MESSAGE = 'Request cancelled'
+export const REPLY_PARENT_MARKER = 'reply'
+export const UNKNOWN_ERROR_MESSAGE = 'Unknown error'
+export const CLIENT_NAME = 'WEB'
+export const CLIENT_VERSION = '2.20231219.04.00'
+export const ACCEPT_LANGUAGE = 'en-US,en;q=0.9'
 
-const COMMENT_COLUMNS = [
+export const COMMENT_COLUMNS = [
   'published_time',
   'author',
   'likes',
@@ -25,35 +25,12 @@ const COMMENT_COLUMNS = [
   'comment',
 ] as const
 
-const XLSX_SHEET_COMMENTS = 'comments'
-const XLSX_SHEET_REPLIES = 'replies'
-const JSON_ROOT_KEY = 'comments'
+export const XLSX_SHEET_COMMENTS = 'comments'
+export const XLSX_SHEET_REPLIES = 'replies'
+export const JSON_ROOT_KEY = 'comments'
 
-const COMMENT_SECTION_IDS = [
+export const COMMENT_SECTION_IDS = [
   'comments-section',
   'engagement-panel-comments-section',
   'shorts-engagement-panel-comments-section',
 ]
-
-export {
-  USER_AGENT,
-  DEFAULT_YOUTUBE_URL,
-  WATCH_PATH,
-  NEXT_PATH,
-  OEMBED_PATH,
-  OEMBED_URL_PARAM,
-  OEMBED_FORMAT_PARAM,
-  OEMBED_FORMAT,
-  CONTINUATION_DELAY_MS,
-  CANCELLED_ERROR_MESSAGE,
-  REPLY_PARENT_MARKER,
-  UNKNOWN_ERROR_MESSAGE,
-  CLIENT_NAME,
-  CLIENT_VERSION,
-  ACCEPT_LANGUAGE,
-  COMMENT_COLUMNS,
-  XLSX_SHEET_COMMENTS,
-  XLSX_SHEET_REPLIES,
-  JSON_ROOT_KEY,
-  COMMENT_SECTION_IDS,
-}

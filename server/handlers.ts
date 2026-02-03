@@ -5,9 +5,16 @@ import {
   buildDownloadData,
   buildDownloadFilename,
   buildStreamPayload,
+  type StreamPayload,
 } from './formats.ts'
 
-async function handleCommentsRequest(req: Request): Promise<Response> {
+type StreamEvent =
+  | { event: 'status'; data: { message: string } }
+  | { event: 'progress'; data: { processed: number; filtered: number } }
+  | { event: 'error'; data: { message: string } }
+  | { event: 'complete'; data: StreamPayload & { count: number } }
+
+export async function handleCommentsRequest(req: Request): Promise<Response> {
   const params = parseRequestParams(req)
   if (params instanceof Response) return params
   const { videoUrl, videoId, minLikes, format } = params
@@ -29,7 +36,7 @@ async function handleCommentsRequest(req: Request): Promise<Response> {
   })
 }
 
-async function handleCommentsStreamRequest(req: Request): Promise<Response> {
+export async function handleCommentsStreamRequest(req: Request): Promise<Response> {
   const params = parseRequestParams(req)
   if (params instanceof Response) return params
   const { videoUrl, videoId, minLikes, format } = params
@@ -46,9 +53,11 @@ async function handleCommentsStreamRequest(req: Request): Promise<Response> {
         controller.close()
       }
 
-      const sendEvent = (event: string, data: unknown) => {
+      const sendEvent = (event: StreamEvent) => {
         if (streamState.closed) return
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
+        controller.enqueue(
+          encoder.encode(`event: ${event.event}\ndata: ${JSON.stringify(event.data)}\n\n`),
+        )
       }
 
       const abort = () => abortController.abort()
@@ -56,19 +65,19 @@ async function handleCommentsStreamRequest(req: Request): Promise<Response> {
       req.signal.addEventListener('abort', abort, { once: true })
       signal.addEventListener('abort', closeStream, { once: true })
 
-      sendEvent('status', { message: 'Starting download...' })
+      sendEvent({ event: 'status', data: { message: 'Starting download...' } })
 
       const result = await downloadComments(videoUrl, {
         minLikes,
         onProgress(processed, filtered) {
-          sendEvent('progress', { processed, filtered })
+          sendEvent({ event: 'progress', data: { processed, filtered } })
         },
         signal,
       })
 
       if (result.error) {
         if (!signal.aborted) {
-          sendEvent('error', { message: result.error })
+          sendEvent({ event: 'error', data: { message: result.error } })
         }
         closeStream()
         return
@@ -76,9 +85,12 @@ async function handleCommentsStreamRequest(req: Request): Promise<Response> {
 
       const filename = buildDownloadFilename(result.videoTitle, videoId, format)
       const payload = buildStreamPayload(format, result.comments, filename)
-      sendEvent('complete', {
-        count: result.comments.length,
-        ...payload,
+      sendEvent({
+        event: 'complete',
+        data: {
+          count: result.comments.length,
+          ...payload,
+        },
       })
 
       closeStream()
@@ -96,5 +108,3 @@ async function handleCommentsStreamRequest(req: Request): Promise<Response> {
     },
   })
 }
-
-export { handleCommentsRequest, handleCommentsStreamRequest }
