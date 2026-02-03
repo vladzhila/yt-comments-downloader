@@ -27,13 +27,11 @@ Open http://localhost:3000
 
 ## API
 
-### GET /api/comments/stream
-
-Server-Sent Events stream for downloading comments.
+Both endpoints accept the same query parameters:
 
 | Param    | Description                        |
 | -------- | ---------------------------------- |
-| url      | YouTube video URL or ID            |
+| url      | YouTube video URL or ID (required) |
 | minLikes | Minimum likes filter (default: 0)  |
 | format   | csv, json, xlsx, md (default: csv) |
 
@@ -42,6 +40,16 @@ Query validation:
 - `url` is required
 - `minLikes` must be a non-negative integer
 - invalid params return `400` with a JSON error message
+
+The filename uses the video title when available and falls back to `yt_<videoId>`.
+
+### GET /api/comments
+
+Direct file download. Returns the file as an attachment.
+
+### GET /api/comments/stream
+
+Server-Sent Events stream with real-time progress updates.
 
 `complete` event payload:
 
@@ -52,8 +60,6 @@ Query validation:
 | encoding | `utf-8` for text, `base64` for binary    |
 | filename | Suggested filename for download          |
 | mimeType | MIME type for the selected export format |
-
-The filename uses the video title when available and falls back to `yt_<videoId>`.
 
 ## Development
 
