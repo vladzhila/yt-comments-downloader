@@ -27,8 +27,12 @@ export function parseRequestParams(req: Request): RequestParams | Response {
     format: url.searchParams.get(FORMAT_QUERY_PARAM) ?? undefined,
   })
   if (!parsed.success) {
-    const missingUrl = parsed.error.issues.some((issue) => issue.path[0] === 'url')
-    const error = missingUrl ? 'Missing url parameter' : 'Invalid query parameters'
+    const missingUrl = parsed.error.issues.some(
+      (issue) => issue.path[0] === 'url',
+    )
+    const error = missingUrl
+      ? 'Missing url parameter'
+      : 'Invalid query parameters'
     return Response.json({ error }, { status: 400 })
   }
 
@@ -42,5 +46,10 @@ export function parseRequestParams(req: Request): RequestParams | Response {
   const minLikes = parsed.data.minLikes
   const format = parseDownloadFormat(parsed.data.format ?? null)
 
-  return { videoUrl, videoId, minLikes, format }
+  return {
+    videoUrl,
+    videoId,
+    minLikes,
+    format,
+  }
 }

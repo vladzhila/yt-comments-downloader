@@ -36,7 +36,11 @@ test('parseDownloadFormat accepts valid values', () => {
 })
 
 test('buildDownloadFilename sanitizes title and falls back to id', () => {
-  const sanitized = buildDownloadFilename(' Test:/Video*Title  ', VIDEO_ID, 'csv')
+  const sanitized = buildDownloadFilename(
+    ' Test:/Video*Title  ',
+    VIDEO_ID,
+    'csv',
+  )
   expect(sanitized).toBe('TestVideoTitle.csv')
 
   const fallback = buildDownloadFilename(undefined, VIDEO_ID, 'json')

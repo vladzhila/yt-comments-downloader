@@ -16,7 +16,10 @@ function isVoteSuffix(value: string): value is VoteSuffix {
   return Object.hasOwn(VOTE_SUFFIXES, value)
 }
 
-export function* searchDict(obj: unknown, searchKey: string): Generator<unknown> {
+export function* searchDict(
+  obj: unknown,
+  searchKey: string,
+): Generator<unknown> {
   const stack: unknown[] = [obj]
   while (stack.length > 0) {
     const current = stack.pop()
@@ -24,7 +27,9 @@ export function* searchDict(obj: unknown, searchKey: string): Generator<unknown>
       stack.push(...current)
       continue
     }
-    if (!isRecord(current)) continue
+    if (!isRecord(current)) {
+      continue
+    }
     for (const [key, value] of Object.entries(current)) {
       if (key === searchKey) {
         yield value
@@ -36,12 +41,16 @@ export function* searchDict(obj: unknown, searchKey: string): Generator<unknown>
 }
 
 export function parseVoteCount(text: string | undefined): number {
-  if (!text) return 0
+  if (!text) {
+    return 0
+  }
   const cleaned = text.replace(/[,\s]/g, '').toLowerCase()
   const suffix = cleaned.slice(-1)
   if (isVoteSuffix(suffix)) {
     const value = Number.parseFloat(cleaned.slice(0, -1))
-    if (Number.isNaN(value)) return 0
+    if (Number.isNaN(value)) {
+      return 0
+    }
     return Math.round(value * VOTE_SUFFIXES[suffix])
   }
 
@@ -49,18 +58,27 @@ export function parseVoteCount(text: string | undefined): number {
   return Number.isNaN(value) ? 0 : value
 }
 
-export function parseCommentsFromMutations(mutations: Mutation[], minLikes: number): Comment[] {
+export function parseCommentsFromMutations(
+  mutations: Mutation[],
+  minLikes: number,
+): Comment[] {
   const comments: Comment[] = []
 
   for (const mutation of mutations) {
     const payload = mutation.payload?.commentEntityPayload
-    if (!payload) continue
+    if (!payload) {
+      continue
+    }
 
     const props = payload.properties
-    if (!props?.commentId || !props.content?.content) continue
+    if (!props?.commentId || !props.content?.content) {
+      continue
+    }
 
     const votes = parseVoteCount(payload.toolbar?.likeCountNotliked)
-    if (votes < minLikes) continue
+    if (votes < minLikes) {
+      continue
+    }
 
     const isReply = typeof props.replyLevel === 'number' && props.replyLevel > 0
 

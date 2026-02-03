@@ -27,17 +27,29 @@ const API_KEY_PATTERN = /"INNERTUBE_API_KEY":"([^"]+)"/
 const VIDEO_ID_LENGTH = 11
 
 function isSortMenuItem(value: unknown): value is SortMenuItem {
-  if (!isRecord(value)) return false
+  if (!isRecord(value)) {
+    return false
+  }
   const serviceEndpoint = value.serviceEndpoint
-  if (serviceEndpoint === undefined) return true
+  if (serviceEndpoint === undefined) {
+    return true
+  }
   return isContinuationEndpoint(serviceEndpoint)
 }
 
-function isSortFilterSubMenuRenderer(value: unknown): value is SortFilterSubMenuRenderer {
-  if (!isRecord(value)) return false
+function isSortFilterSubMenuRenderer(
+  value: unknown,
+): value is SortFilterSubMenuRenderer {
+  if (!isRecord(value)) {
+    return false
+  }
   const items = value.subMenuItems
-  if (items === undefined) return true
-  if (!Array.isArray(items)) return false
+  if (items === undefined) {
+    return true
+  }
+  if (!Array.isArray(items)) {
+    return false
+  }
   return items.every(isSortMenuItem)
 }
 
@@ -48,7 +60,9 @@ export function extractVideoId(urlOrId: string): VideoId | null {
 
   for (const pattern of VIDEO_ID_PATTERNS) {
     const match = urlOrId.match(pattern)
-    if (match?.[1]) return asVideoId(match[1])
+    if (match?.[1]) {
+      return asVideoId(match[1])
+    }
   }
 
   return null
@@ -61,41 +75,61 @@ export function extractApiKey(html: string): string | null {
 
 function extractTitleFromMeta(html: string, pattern: RegExp): string | null {
   const match = html.match(pattern)
-  if (!match?.[1]) return null
+  if (!match?.[1]) {
+    return null
+  }
   return decodeHtmlEntities(match[1])
 }
 
 function extractTitleFromPlayerResponse(html: string): string | null {
   const match = html.match(PLAYER_RESPONSE_PATTERN)
-  if (!match?.[1]) return null
+  if (!match?.[1]) {
+    return null
+  }
 
   const data = parseJson(match[1])
-  if (!isRecord(data)) return null
+  if (!isRecord(data)) {
+    return null
+  }
 
   const videoDetails = data.videoDetails
-  if (!isRecord(videoDetails)) return null
+  if (!isRecord(videoDetails)) {
+    return null
+  }
 
   const title = videoDetails.title
-  if (typeof title !== 'string') return null
+  if (typeof title !== 'string') {
+    return null
+  }
 
   return decodeHtmlEntities(title)
 }
 
 export function extractVideoTitle(html: string): string | null {
   const ogTitle = extractTitleFromMeta(html, OG_TITLE_PATTERN)
-  if (ogTitle) return ogTitle
+  if (ogTitle) {
+    return ogTitle
+  }
 
   const itempropTitle = extractTitleFromMeta(html, META_ITEMPROP_NAME_PATTERN)
-  if (itempropTitle) return itempropTitle
+  if (itempropTitle) {
+    return itempropTitle
+  }
 
   const metaTitle = extractTitleFromMeta(html, META_NAME_TITLE_PATTERN)
-  if (metaTitle) return metaTitle
+  if (metaTitle) {
+    return metaTitle
+  }
 
   const playerTitle = extractTitleFromPlayerResponse(html)
-  if (playerTitle) return playerTitle
+  if (playerTitle) {
+    return playerTitle
+  }
 
   const titleMatch = html.match(TITLE_TAG_PATTERN)
-  if (!titleMatch?.[1]) return null
+  if (!titleMatch?.[1]) {
+    return null
+  }
   const title = titleMatch[1].replace(TITLE_SUFFIX_PATTERN, '').trim()
   return title ? decodeHtmlEntities(title) : null
 }
@@ -107,7 +141,9 @@ export function decodeHtmlEntities(text: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
+      String.fromCharCode(parseInt(hex, 16)),
+    )
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
 }
 
@@ -121,12 +157,18 @@ function parseJson(value: string): unknown | null {
   return result.isOk() ? result.value : null
 }
 
-export function findInitialContinuation(html: string): ContinuationEndpoint | null {
+export function findInitialContinuation(
+  html: string,
+): ContinuationEndpoint | null {
   const match = html.match(INITIAL_DATA_PATTERN)
-  if (!match?.[1]) return null
+  if (!match?.[1]) {
+    return null
+  }
 
   const data = parseJson(match[1])
-  if (!isRecord(data)) return null
+  if (!isRecord(data)) {
+    return null
+  }
 
   const sortMenus = [...searchDict(data, 'sortFilterSubMenuRenderer')].filter(
     isSortFilterSubMenuRenderer,
@@ -134,12 +176,14 @@ export function findInitialContinuation(html: string): ContinuationEndpoint | nu
   for (const menu of sortMenus) {
     const items = menu.subMenuItems ?? []
     const preferred = items[1]?.serviceEndpoint ?? items[0]?.serviceEndpoint
-    if (preferred) return preferred
+    if (preferred) {
+      return preferred
+    }
   }
 
-  const continuationEndpoints = [...searchDict(data, 'continuationEndpoint')].filter(
-    isContinuationEndpoint,
-  )
+  const continuationEndpoints = [
+    ...searchDict(data, 'continuationEndpoint'),
+  ].filter(isContinuationEndpoint)
   for (const ep of continuationEndpoints) {
     if (ep.continuationCommand?.token) {
       return ep

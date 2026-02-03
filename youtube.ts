@@ -11,6 +11,12 @@ export {
   extractVideoTitle,
   decodeHtmlEntities,
 } from './youtube/html.ts'
-export { searchDict, parseVoteCount, parseCommentsFromMutations } from './youtube/parse.ts'
+export {
+  searchDict,
+  parseVoteCount,
+  parseCommentsFromMutations,
+} from './youtube/parse.ts'
 export { CANCELLED_ERROR_MESSAGE } from './youtube/constants.ts'
-export type { Comment, Mutation } from './youtube/types.ts'
+export type {
+ Comment, Mutation 
+} from './youtube/types.ts'

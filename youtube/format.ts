@@ -49,7 +49,9 @@ export function commentsToMarkdown(comments: readonly Comment[]): string {
   const divider = `| ${COMMENT_COLUMNS.map(() => '---').join(' | ')} |`
   const rows = comments.map((comment) => {
     const row = commentToRow(comment)
-    const cells = COMMENT_COLUMNS.map((column) => escapeMarkdownCell(row[column]))
+    const cells = COMMENT_COLUMNS.map((column) =>
+      escapeMarkdownCell(row[column]),
+    )
     return `| ${cells.join(' | ')} |`
   })
   return [header, divider, ...rows].join('\n')
@@ -57,13 +59,20 @@ export function commentsToMarkdown(comments: readonly Comment[]): string {
 
 export function commentsToXlsx(comments: readonly Comment[]): Uint8Array {
   const rows = comments.map(commentToRow)
-  const commentsSheet = XLSX.utils.json_to_sheet(rows.filter((row) => !row.parent_id))
-  const repliesSheet = XLSX.utils.json_to_sheet(rows.filter((row) => row.parent_id))
+  const commentsSheet = XLSX.utils.json_to_sheet(
+    rows.filter((row) => !row.parent_id),
+  )
+  const repliesSheet = XLSX.utils.json_to_sheet(
+    rows.filter((row) => row.parent_id),
+  )
   const workbook = XLSX.utils.book_new()
 
   XLSX.utils.book_append_sheet(workbook, commentsSheet, XLSX_SHEET_COMMENTS)
   XLSX.utils.book_append_sheet(workbook, repliesSheet, XLSX_SHEET_REPLIES)
 
-  const data = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+  const data = XLSX.write(workbook, {
+    bookType: 'xlsx',
+    type: 'array',
+  })
   return new Uint8Array(data)
 }

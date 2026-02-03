@@ -13,7 +13,9 @@ bun test parse.test   # Run a single test file
 bun run test:coverage # Run tests with coverage
 bun run typecheck     # TypeScript check
 bun run lint          # ESLint check
-bun run check         # Lint + typecheck + test in parallel (use before committing)
+bun run lint:fix      # ESLint with auto-fix
+bun run fix           # Format + lint fix (auto-fix all issues)
+bun run check         # Lint + typecheck + test (use before committing)
 ```
 
 ## Architecture
@@ -52,12 +54,34 @@ Uses `neverthrow` library throughout:
 - Chain with `.andThen()`, `.map()`, `.unwrapOr()`
 - Abort signal checked via `abortIfNeeded()` between pagination requests
 
+## Code Style
+
+- Always use `{}` blocks for control-flow statements (`if`, `for`, `while`, `switch`, etc.)
+- Always format object literals across multiple lines (destructuring allowed on single line)
+
+**Avoid:**
+
+```ts
+if (x) return { comments: [], error: ERROR_NO_COMMENTS }
+```
+
+**Use:**
+
+```ts
+if (x) {
+  return {
+    comments: [],
+    error: ERROR_NO_COMMENTS,
+  }
+}
+```
+
 ## Verification Workflow
 
 **Before declaring a feature "done":**
 
 1. Every implementation must end with adding/updating tests
 2. Coverage target: 80-90% (`bun run test:coverage`)
-3. Run `bun run check` (lint + typecheck + test); all must pass
+3. Run `bun run fix && bun run check`; all must pass
 4. Update README and CLAUDE.md if behavior changes
 5. Remove dead code from the session

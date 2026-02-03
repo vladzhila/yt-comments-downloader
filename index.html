@@ -28,7 +28,8 @@
         --input-bg: #f7f2ec;
         --placeholder: #a59b92;
         --focus-ring: rgba(209, 73, 47, 0.2);
-        --card-shadow: 0 14px 34px rgba(27, 27, 27, 0.08), 0 6px 16px rgba(27, 27, 27, 0.05);
+        --card-shadow:
+          0 14px 34px rgba(27, 27, 27, 0.08), 0 6px 16px rgba(27, 27, 27, 0.05);
         --button-bg: #1b1b1b;
         --button-hover: #0f0f0f;
         --button-text: #f7f2ec;
@@ -118,8 +119,16 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         background:
-          radial-gradient(1200px circle at 10% -10%, var(--bg-accent) 0%, transparent 60%),
-          radial-gradient(900px circle at 110% 0%, var(--bg-accent-strong) 0%, transparent 55%),
+          radial-gradient(
+            1200px circle at 10% -10%,
+            var(--bg-accent) 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            900px circle at 110% 0%,
+            var(--bg-accent-strong) 0%,
+            transparent 55%
+          ),
           var(--bg);
         color: var(--text);
         min-height: 100vh;
@@ -733,7 +742,8 @@
       if (savedMinLikes !== null) minLikesInput.value = savedMinLikes
 
       const savedFormat = localStorage.getItem(FORMAT_STORAGE_KEY)
-      if (savedFormat && savedFormat in FORMAT_LABELS) formatSelect.value = savedFormat
+      if (savedFormat && savedFormat in FORMAT_LABELS)
+        formatSelect.value = savedFormat
 
       const savedTheme = localStorage.getItem(THEME_STORAGE_KEY)
       if (savedTheme && THEMES.has(savedTheme)) themeSelect.value = savedTheme

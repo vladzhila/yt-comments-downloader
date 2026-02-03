@@ -67,9 +67,11 @@ Server-Sent Events stream with real-time progress updates.
 bun test              # Run tests
 bun run test:coverage # Run tests with coverage report
 bun run lint          # Run ESLint
+bun run lint:fix      # Run ESLint with auto-fix
 bun run typecheck     # TypeScript type checking
 bun run format        # Format code with Prettier
-bun run check         # Run lint + typecheck + test in parallel
+bun run fix           # Format + lint fix (auto-fix all issues)
+bun run check         # Lint + typecheck + test (read-only verification)
 ```
 
 Pre-commit hooks automatically run lint-staged and checks.
@@ -98,7 +100,11 @@ Pre-commit hooks automatically run lint-staged and checks.
 ### JSON
 
 ```json
-{ "comments": [{ "cid": "...", "text": "...", "author": "...", "votes": 0, "time": "..." }] }
+{
+  "comments": [
+    { "cid": "...", "text": "...", "author": "...", "votes": 0, "time": "..." }
+  ]
+}
 ```
 
 ### XLSX

@@ -42,11 +42,16 @@ const PAGE_HEADERS = {
 const REPLY_ITEM_PREFIX = 'comment-replies-item'
 
 function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
+  if (error instanceof Error) {
+    return error.message
+  }
   return UNKNOWN_ERROR_MESSAGE
 }
 
-function safeFetch(url: string, init: RequestInit): ResultAsync<Response, string> {
+function safeFetch(
+  url: string,
+  init: RequestInit,
+): ResultAsync<Response, string> {
   return ResultAsync.fromPromise(fetch(url, init), (e) =>
     init.signal?.aborted ? CANCELLED_ERROR_MESSAGE : getErrorMessage(e),
   )
@@ -58,9 +63,15 @@ export function fetchPage(
   signal?: AbortSignal,
 ): ResultAsync<string, string> {
   const url = `${baseUrl}${WATCH_PATH}?v=${videoId}`
-  return safeFetch(url, { headers: PAGE_HEADERS, signal }).andThen((response) =>
+  return safeFetch(url, {
+    headers: PAGE_HEADERS,
+    signal,
+  }).andThen((response) =>
     response.ok
-      ? ResultAsync.fromPromise(response.text(), () => 'Failed to read response')
+      ? ResultAsync.fromPromise(
+          response.text(),
+          () => 'Failed to read response',
+        )
       : errAsync(`Failed to fetch video page: ${response.status}`),
   )
 }
@@ -75,7 +86,9 @@ function isOembedResponse(data: unknown): data is OembedResponse {
 }
 
 function extractTitle(data: unknown): string | null {
-  if (!isOembedResponse(data)) return null
+  if (!isOembedResponse(data)) {
+    return null
+  }
   return typeof data.title === 'string' ? data.title : null
 }
 
@@ -85,7 +98,10 @@ export async function fetchOembedTitle(
   signal?: AbortSignal,
 ): Promise<string | null> {
   const url = buildOembedUrl(baseUrl, videoId)
-  const result = await safeFetch(url, { headers: PAGE_HEADERS, signal })
+  const result = await safeFetch(url, {
+    headers: PAGE_HEADERS,
+    signal,
+  })
     .andThen((r) => (r.ok ? ok(r) : err(null)))
     .andThen((r) => ResultAsync.fromPromise(r.json(), () => null))
     .map(extractTitle)
@@ -95,7 +111,12 @@ export async function fetchOembedTitle(
 
 function buildRequestBody(token: string): string {
   return JSON.stringify({
-    context: { client: { clientName: CLIENT_NAME, clientVersion: CLIENT_VERSION } },
+    context: {
+      client: {
+        clientName: CLIENT_NAME,
+        clientVersion: CLIENT_VERSION,
+      },
+    },
     continuation: token,
   })
 }
@@ -105,13 +126,21 @@ function isMutation(value: unknown): value is Mutation {
 }
 
 function extractMutations(value: unknown): Mutation[] {
-  if (!isRecord(value)) return []
+  if (!isRecord(value)) {
+    return []
+  }
   const frameworkUpdates = value.frameworkUpdates
-  if (!isRecord(frameworkUpdates)) return []
+  if (!isRecord(frameworkUpdates)) {
+    return []
+  }
   const entityBatchUpdate = frameworkUpdates.entityBatchUpdate
-  if (!isRecord(entityBatchUpdate)) return []
+  if (!isRecord(entityBatchUpdate)) {
+    return []
+  }
   const mutations = entityBatchUpdate.mutations
-  if (!Array.isArray(mutations)) return []
+  if (!Array.isArray(mutations)) {
+    return []
+  }
   return mutations.filter(isMutation)
 }
 
@@ -121,18 +150,24 @@ function isButtonRenderer(value: unknown): value is ButtonRenderer {
 
 function hasContinuationToken(
   endpoint: ContinuationEndpoint,
-): endpoint is ContinuationEndpoint & { continuationCommand: { token: string } } {
+): endpoint is ContinuationEndpoint & {
+  continuationCommand: { token: string }
+} {
   return typeof endpoint.continuationCommand?.token === 'string'
 }
 
 function hasValidToken(
   btn: ButtonRenderer,
 ): btn is ButtonRenderer & { command: ContinuationEndpoint } {
-  if (!btn.command) return false
+  if (!btn.command) {
+    return false
+  }
   return hasContinuationToken(btn.command)
 }
 
-function extractReplyButtonEndpoints(item: Record<string, unknown>): ContinuationEndpoint[] {
+function extractReplyButtonEndpoints(
+  item: Record<string, unknown>,
+): ContinuationEndpoint[] {
   return [...searchDict(item, 'buttonRenderer')]
     .filter(isButtonRenderer)
     .filter(hasValidToken)
@@ -144,16 +179,22 @@ function processContinuationItem(
   targetId: string,
   continuations: ContinuationEndpoint[],
 ): void {
-  if (!isRecord(item)) return
+  if (!isRecord(item)) {
+    return
+  }
 
-  const endpoints = [...searchDict(item, 'continuationEndpoint')].filter(isContinuationEndpoint)
+  const endpoints = [...searchDict(item, 'continuationEndpoint')].filter(
+    isContinuationEndpoint,
+  )
 
   if (COMMENT_SECTION_ID_SET.has(targetId)) {
     continuations.unshift(...endpoints)
     return
   }
 
-  if (!targetId.startsWith(REPLY_ITEM_PREFIX)) return
+  if (!targetId.startsWith(REPLY_ITEM_PREFIX)) {
+    return
+  }
 
   if (Object.hasOwn(item, 'continuationItemRenderer')) {
     continuations.push(...extractReplyButtonEndpoints(item))
@@ -166,9 +207,14 @@ function isContinuationAction(value: unknown): value is ContinuationAction {
   return isRecord(value)
 }
 
-function processActions(actions: readonly unknown[], continuations: ContinuationEndpoint[]): void {
+function processActions(
+  actions: readonly unknown[],
+  continuations: ContinuationEndpoint[],
+): void {
   for (const action of actions) {
-    if (!isContinuationAction(action)) continue
+    if (!isContinuationAction(action)) {
+      continue
+    }
     const targetId = action.targetId ?? ''
     const items = action.continuationItems ?? []
     for (const item of items) {
@@ -180,18 +226,23 @@ function processActions(actions: readonly unknown[], continuations: Continuation
 export async function fetchComments(
   options: FetchCommentsOptions,
 ): Promise<Result<Comment[], string>> {
-  const { baseUrl, apiKey, initialEndpoint, minLikes, onProgress, signal } = options
+  const { baseUrl, apiKey, initialEndpoint, minLikes, onProgress, signal } =
+    options
   const comments: Comment[] = []
   const continuations: ContinuationEndpoint[] = [initialEndpoint]
   const progress = { processed: 0 }
 
   while (continuations.length > 0) {
     const abortResult = abortIfNeeded(signal)
-    if (abortResult.isErr()) return err(abortResult.error)
+    if (abortResult.isErr()) {
+      return err(abortResult.error)
+    }
 
     const continuation = continuations.pop()
     const token = continuation?.continuationCommand?.token
-    if (!token) continue
+    if (!token) {
+      continue
+    }
 
     const url = `${baseUrl}${NEXT_PATH}?key=${apiKey}`
     const responseResult = await safeFetch(url, {
@@ -201,9 +252,13 @@ export async function fetchComments(
       signal,
     })
 
-    if (responseResult.isErr()) return err(responseResult.error)
+    if (responseResult.isErr()) {
+      return err(responseResult.error)
+    }
     const response = responseResult.value
-    if (!response.ok) return err(`Failed to fetch comments: ${response.status}`)
+    if (!response.ok) {
+      return err(`Failed to fetch comments: ${response.status}`)
+    }
 
     const data = await response.json()
     const mutations = extractMutations(data)
@@ -215,12 +270,16 @@ export async function fetchComments(
       onProgress(progress.processed, comments.length)
     }
 
-    const reloadActions = [...searchDict(data, 'reloadContinuationItemsCommand')]
+    const reloadActions = [
+      ...searchDict(data, 'reloadContinuationItemsCommand'),
+    ]
     const appendActions = [...searchDict(data, 'appendContinuationItemsAction')]
     processActions([...reloadActions, ...appendActions], continuations)
 
     const abortAfter = abortIfNeeded(signal)
-    if (abortAfter.isErr()) return err(abortAfter.error)
+    if (abortAfter.isErr()) {
+      return err(abortAfter.error)
+    }
     await new Promise((resolve) => setTimeout(resolve, CONTINUATION_DELAY_MS))
   }
 

@@ -13,7 +13,9 @@ test('dark theme styles are defined', async () => {
 })
 
 test('minLikes default is 0 in API params', async () => {
-  const source = await Bun.file(new URL('./server/params.ts', import.meta.url)).text()
+  const source = await Bun.file(
+    new URL('./server/params.ts', import.meta.url),
+  ).text()
   expect(source).toContain('const DEFAULT_MIN_LIKES = 0')
   expect(source).toContain('String(DEFAULT_MIN_LIKES)')
 })
@@ -79,7 +81,9 @@ test('download button starts disabled', async () => {
 test('download button toggles on url input', async () => {
   const html = await Bun.file(new URL('./index.html', import.meta.url)).text()
   expect(html).toContain('function updateDownloadEnabled()')
-  expect(html).toContain("urlInput.addEventListener('input', updateDownloadEnabled)")
+  expect(html).toContain(
+    "urlInput.addEventListener('input', updateDownloadEnabled)",
+  )
   expect(html).toContain('updateDownloadEnabled()')
 })
 
