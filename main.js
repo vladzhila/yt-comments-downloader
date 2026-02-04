@@ -1,220 +1,105 @@
-const urlInput = document.getElementById('url')
-const minLikesInput = document.getElementById('minLikes')
-const formatSelect = document.getElementById('format')
-const themeSelect = document.getElementById('theme')
-const themePill = document.querySelector('.theme-pill')
-const downloadBtn = document.getElementById('download')
-const statusDiv = document.getElementById('status')
-const MIN_LIKES_STORAGE_KEY = 'yt-comments:minLikes'
-const FORMAT_STORAGE_KEY = 'yt-comments:format'
-const THEME_STORAGE_KEY = 'yt-comments:theme'
-const THEMES = new Set(['system', 'light', 'dark'])
-const FORMAT_LABELS = {
-  csv: 'CSV',
-  json: 'JSON',
-  xlsx: 'XLSX',
-  md: 'Markdown',
-}
-const INVALID_URL_MESSAGE = 'Enter a valid YouTube URL'
-const REQUIRED_URL_MESSAGE = 'Enter a YouTube URL'
-const YOUTUBE_PATTERNS = [
-  /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-  /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-  /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
-  /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
-]
+import { downloadComments } from './client/download.js'
+import {
+  loadPreferences,
+  saveMinLikes,
+  saveFormat,
+  saveTheme,
+} from './client/storage.js'
+import { applyTheme, handleThemePillClick } from './client/theme.js'
+import {
+  getElements,
+  setStatus,
+  updateDownloadLabel,
+  updateDownloadEnabled,
+} from './client/ui.js'
+
+const elements = getElements()
+const {
+  urlInput,
+  minLikesInput,
+  formatSelect,
+  themeSelect,
+  themePill,
+  downloadBtn,
+  statusDiv,
+} = elements
+
 const downloadState = { active: false }
-
-const savedMinLikes = localStorage.getItem(MIN_LIKES_STORAGE_KEY)
-if (savedMinLikes !== null) {
-  minLikesInput.value = savedMinLikes
-}
-
-const savedFormat = localStorage.getItem(FORMAT_STORAGE_KEY)
-if (savedFormat && savedFormat in FORMAT_LABELS) {
-  formatSelect.value = savedFormat
-}
-
-const savedTheme = localStorage.getItem(THEME_STORAGE_KEY)
-if (savedTheme && THEMES.has(savedTheme)) {
-  themeSelect.value = savedTheme
-}
-
-function updateDownloadLabel() {
-  const label = FORMAT_LABELS[formatSelect.value] ?? FORMAT_LABELS.csv
-  downloadBtn.textContent = `Download ${label}`
-}
-
-function updateDownloadEnabled() {
-  downloadBtn.disabled = downloadState.active || !urlInput.value.trim()
-}
-
-function applyTheme(theme, skipTransition = false) {
-  if (skipTransition) {
-    document.body.classList.add('no-transition')
-  }
-
-  if (theme === 'system') {
-    document.documentElement.removeAttribute('data-theme')
-  } else {
-    document.documentElement.setAttribute('data-theme', theme)
-  }
-
-  if (skipTransition) {
-    document.body.offsetHeight
-    document.body.classList.remove('no-transition')
-  }
-}
 
 function setDownloadActive(active) {
   downloadState.active = active
-  updateDownloadEnabled()
+  updateDownloadEnabled(downloadBtn, downloadState.active, urlInput.value)
 }
 
-function base64ToUint8Array(base64) {
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  Array.from(binary).forEach((char, index) => {
-    bytes[index] = char.charCodeAt(0)
+function setStatusUi(type, message, count) {
+  setStatus(statusDiv, type, message, count)
+}
+
+function handleDownload() {
+  downloadComments({
+    url: urlInput.value.trim(),
+    minLikes: parseInt(minLikesInput.value, 10) || 0,
+    format: formatSelect.value,
+    setStatus: setStatusUi,
+    setDownloadActive,
   })
-  return bytes
 }
 
-function createDownloadBlob(payload) {
-  if (payload.encoding === 'base64') {
-    const bytes = base64ToUint8Array(payload.data)
-    return new Blob([bytes], { type: payload.mimeType })
-  }
-  return new Blob([payload.data], { type: payload.mimeType })
-}
-
-function isLikelyVideoId(value) {
-  return value.length === 11 && !value.includes('/')
-}
-
-function isValidYouTubeUrl(value) {
-  if (isLikelyVideoId(value)) {
-    return true
-  }
-  return YOUTUBE_PATTERNS.some((pattern) => pattern.test(value))
-}
-
-function setStatus(type, message, count) {
-  statusDiv.className = `status visible ${type}`
-  statusDiv.innerHTML =
-    count !== undefined
-      ? `<span class="status-text">${message}</span><span class="status-count">${count} comments</span>`
-      : `<span class="status-text">${message}</span>`
-}
-
-async function downloadComments() {
-  const url = urlInput.value.trim()
-  const minLikes = parseInt(minLikesInput.value, 10) || 0
-  const format = formatSelect.value
-
-  if (!url) {
-    setStatus('error', REQUIRED_URL_MESSAGE)
+function handleUrlKeydown(event) {
+  if (event.key !== 'Enter') {
     return
   }
-
-  if (!isValidYouTubeUrl(url)) {
-    setStatus('error', INVALID_URL_MESSAGE)
-    return
-  }
-
-  setDownloadActive(true)
-  setStatus('loading', 'Connecting...')
-
-  try {
-    const params = new URLSearchParams({
-      url,
-      minLikes: String(minLikes),
-      format,
-    })
-    const eventSource = new EventSource(`/api/comments/stream?${params}`)
-
-    eventSource.addEventListener('status', (e) => {
-      const data = JSON.parse(e.data)
-      setStatus('loading', data.message)
-    })
-
-    eventSource.addEventListener('progress', (e) => {
-      const data = JSON.parse(e.data)
-      setStatus('loading', `Scanning...`, data.filtered)
-    })
-
-    eventSource.addEventListener('complete', (e) => {
-      const data = JSON.parse(e.data)
-      eventSource.close()
-
-      const blob = createDownloadBlob(data)
-      const downloadUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = downloadUrl
-      a.download = data.filename
-      a.click()
-      URL.revokeObjectURL(downloadUrl)
-
-      setStatus('success', 'Download complete', data.count)
-      setDownloadActive(false)
-    })
-
-    eventSource.addEventListener('error', (e) => {
-      if (e.data) {
-        const data = JSON.parse(e.data)
-        setStatus('error', data.message)
-      } else {
-        setStatus('error', 'Connection lost')
-      }
-      eventSource.close()
-      setDownloadActive(false)
-    })
-  } catch {
-    setStatus('error', 'Connection failed')
-    setDownloadActive(false)
-  }
+  handleDownload()
 }
 
-downloadBtn.addEventListener('click', downloadComments)
-urlInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    downloadComments()
-  }
-})
-urlInput.addEventListener('input', updateDownloadEnabled)
-minLikesInput.addEventListener('input', () => {
-  localStorage.setItem(MIN_LIKES_STORAGE_KEY, minLikesInput.value)
-})
-formatSelect.addEventListener('change', () => {
-  localStorage.setItem(FORMAT_STORAGE_KEY, formatSelect.value)
-  updateDownloadLabel()
-})
+function handleUrlInput() {
+  updateDownloadEnabled(downloadBtn, downloadState.active, urlInput.value)
+}
 
-themeSelect.addEventListener('change', () => {
-  localStorage.setItem(THEME_STORAGE_KEY, themeSelect.value)
+function handleMinLikesInput() {
+  saveMinLikes(minLikesInput.value)
+}
+
+function handleFormatChange() {
+  saveFormat(formatSelect.value)
+  updateDownloadLabel(downloadBtn, formatSelect.value)
+}
+
+function handleThemeChange() {
+  saveTheme(themeSelect.value)
   applyTheme(themeSelect.value, true)
-})
-
-function openThemePicker() {
-  if (typeof themeSelect.showPicker === 'function') {
-    themeSelect.showPicker()
-    return
-  }
-  themeSelect.focus()
-  themeSelect.click()
 }
 
-function handleThemePillClick(event) {
-  if (event.target === themeSelect) {
-    return
-  }
-  openThemePicker()
+function handleThemePill(event) {
+  handleThemePillClick(event, themeSelect)
 }
+
+const prefs = loadPreferences()
+if (prefs.minLikes !== null) {
+  minLikesInput.value = prefs.minLikes
+}
+if (prefs.format !== null) {
+  formatSelect.value = prefs.format
+}
+if (prefs.theme !== null) {
+  themeSelect.value = prefs.theme
+}
+
+downloadBtn.addEventListener('click', handleDownload)
+
+urlInput.addEventListener('keydown', handleUrlKeydown)
+urlInput.addEventListener('input', handleUrlInput)
+
+minLikesInput.addEventListener('input', handleMinLikesInput)
+
+formatSelect.addEventListener('change', handleFormatChange)
+
+themeSelect.addEventListener('change', handleThemeChange)
 
 if (themePill) {
-  themePill.addEventListener('click', handleThemePillClick)
+  themePill.addEventListener('click', handleThemePill)
 }
 
-updateDownloadLabel()
-updateDownloadEnabled()
+updateDownloadLabel(downloadBtn, formatSelect.value)
+updateDownloadEnabled(downloadBtn, downloadState.active, urlInput.value)
 applyTheme(themeSelect.value)
