@@ -14,10 +14,19 @@ export function getElements() {
 
 export function setStatus(statusDiv, type, message, count) {
   statusDiv.className = `status visible ${type}`
-  statusDiv.innerHTML =
-    count !== undefined
-      ? `<span class="status-text">${message}</span><span class="status-count">${count} comments</span>`
-      : `<span class="status-text">${message}</span>`
+  statusDiv.textContent = ''
+
+  const textSpan = document.createElement('span')
+  textSpan.className = 'status-text'
+  textSpan.textContent = message
+  statusDiv.appendChild(textSpan)
+
+  if (count !== undefined) {
+    const countSpan = document.createElement('span')
+    countSpan.className = 'status-count'
+    countSpan.textContent = `${count} comments`
+    statusDiv.appendChild(countSpan)
+  }
 }
 
 export function updateDownloadLabel(btn, format) {

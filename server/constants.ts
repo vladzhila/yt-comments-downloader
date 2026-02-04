@@ -12,3 +12,9 @@ export function resolveServerPort(envPort: string | undefined): number {
 }
 
 export const SERVER_PORT = resolveServerPort(process.env.PORT)
+
+export const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+}

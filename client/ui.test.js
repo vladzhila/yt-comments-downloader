@@ -42,7 +42,7 @@ describe('ui', () => {
       setStatus(statusDiv, 'loading', 'Connecting...')
 
       expect(statusDiv.className).toBe('status visible loading')
-      expect(statusDiv.innerHTML).toContain('Connecting...')
+      expect(statusDiv.textContent).toContain('Connecting...')
     })
 
     test('includes count when provided', () => {
@@ -51,8 +51,8 @@ describe('ui', () => {
       setStatus(statusDiv, 'success', 'Download complete', 42)
 
       expect(statusDiv.className).toBe('status visible success')
-      expect(statusDiv.innerHTML).toContain('Download complete')
-      expect(statusDiv.innerHTML).toContain('42 comments')
+      expect(statusDiv.textContent).toContain('Download complete')
+      expect(statusDiv.textContent).toContain('42 comments')
     })
 
     test('sets error status', () => {
@@ -61,7 +61,7 @@ describe('ui', () => {
       setStatus(statusDiv, 'error', 'Something went wrong')
 
       expect(statusDiv.className).toBe('status visible error')
-      expect(statusDiv.innerHTML).toContain('Something went wrong')
+      expect(statusDiv.textContent).toContain('Something went wrong')
     })
   })
 

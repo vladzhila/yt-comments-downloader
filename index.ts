@@ -3,9 +3,20 @@ import {
   handleCommentsRequest,
   handleCommentsStreamRequest,
 } from './server/handlers.ts'
-import { SERVER_PORT, STREAM_IDLE_TIMEOUT_SECONDS } from './server/constants.ts'
+import {
+  SERVER_PORT,
+  STREAM_IDLE_TIMEOUT_SECONDS,
+  SECURITY_HEADERS,
+} from './server/constants.ts'
 
 const mainJsPath = new URL('./main.js', import.meta.url).pathname
+
+function addSecurityHeaders(response: Response): Response {
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(key, value)
+  }
+  return response
+}
 
 const server = Bun.serve({
   port: SERVER_PORT,
@@ -13,9 +24,14 @@ const server = Bun.serve({
   routes: {
     '/': index,
     '/main.js': () =>
-      new Response(Bun.file(mainJsPath), {headers: { 'Content-Type': 'text/javascript' },}),
-    '/api/comments': { GET: handleCommentsRequest },
-    '/api/comments/stream': { GET: handleCommentsStreamRequest },
+      addSecurityHeaders(
+        new Response(Bun.file(mainJsPath), {headers: { 'Content-Type': 'text/javascript' },}),
+      ),
+    '/api/comments': {GET: async (req) => addSecurityHeaders(await handleCommentsRequest(req)),},
+    '/api/comments/stream': {
+      GET: async (req) =>
+        addSecurityHeaders(await handleCommentsStreamRequest(req)),
+    },
   },
 })
 

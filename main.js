@@ -1,3 +1,7 @@
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled rejection:', event.reason)
+})
+
 import { downloadComments } from './client/download.js'
 import {
   loadPreferences,
